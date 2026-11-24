@@ -8,7 +8,7 @@ DO $$
 DECLARE
     v_admin_email TEXT := 'admin@paduralive.local';
     v_admin_username TEXT := 'padura_admin';
-    v_admin_password TEXT := 'PaduraAdmin@2026!Secure'; -- Change this to your strong password
+    v_admin_password TEXT := 'PaduraAdmin@2026'; -- Change this to your strong password
     v_admin_name TEXT := 'Chief Platform Administrator';
     v_user_id UUID := gen_random_uuid();
     v_encrypted_pw TEXT;

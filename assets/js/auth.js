@@ -9,6 +9,13 @@ const PaduraAuth = {
   currentProfile: null,
   inactivityTimer: null,
 
+  async logAttempt(client, payload) {
+    const { error } = await client.from("login_logs").insert(payload);
+    if (error) {
+      console.warn("Could not write login_logs:", error.message);
+    }
+  },
+
   /**
    * Log in user using username, student number, or email
    */
@@ -22,36 +29,28 @@ const PaduraAuth = {
     }
 
     // Convert username or student number to synthetic email
-    // e.g. "PS/2023/174" -> "ps_2023_174@paduralive.local"
     let emailToUse = cleanId;
     if (!cleanId.includes("@")) {
       const sanitized = cleanId.toLowerCase().replace(/[^a-z0-9]/g, "_");
       emailToUse = `${sanitized}@paduralive.local`;
     }
 
-    // Attempt Supabase Auth signIn
     const { data, error } = await client.auth.signInWithPassword({
       email: emailToUse,
       password: password,
     });
 
     if (error) {
-      // Record failed attempt in login_logs
-      try {
-        await client.from("login_logs").insert({
-          username: cleanId,
-          status: "failed",
-          user_agent: navigator.userAgent,
-        });
-      } catch (logErr) {
-        console.warn("Could not log failure:", logErr);
-      }
+      await this.logAttempt(client, {
+        username: cleanId,
+        status: "failed",
+        user_agent: navigator.userAgent,
+      });
       throw new Error(error.message || "Invalid login credentials.");
     }
 
     const authUser = data.user;
 
-    // Fetch user profile from database to verify active status and role
     const { data: profile, error: profileErr } = await client
       .from("profiles")
       .select("id, role, username, full_name, status")
@@ -63,43 +62,33 @@ const PaduraAuth = {
       throw new Error("User profile not found. Please contact an administrator.");
     }
 
-    // Verify account status
+    // Log blocked_inactive BEFORE signing out so the session token is still valid
     if (profile.status !== "active") {
+      await this.logAttempt(client, {
+        user_id: authUser.id,
+        username: cleanId,
+        status: "blocked_inactive",
+        user_agent: navigator.userAgent,
+      });
       await client.auth.signOut();
-      try {
-        await client.from("login_logs").insert({
-          user_id: authUser.id,
-          username: cleanId,
-          status: "blocked_inactive",
-          user_agent: navigator.userAgent,
-        });
-      } catch (e) {}
       throw new Error("Your account has been deactivated. Please contact university administration.");
     }
 
-    // Record successful login
-    try {
-      await client.from("login_logs").insert({
-        user_id: authUser.id,
-        username: cleanId,
-        status: "success",
-        user_agent: navigator.userAgent,
-      });
-    } catch (e) {}
+    await this.logAttempt(client, {
+      user_id: authUser.id,
+      username: cleanId,
+      status: "success",
+      user_agent: navigator.userAgent,
+    });
 
-    // Store profile in memory and session cache
     this.currentUser = authUser;
     this.currentProfile = profile;
     sessionStorage.setItem("padura_user_profile", JSON.stringify(profile));
 
-    // Redirect to respective dashboard
     this.redirectByRole(profile.role);
     return profile;
   },
 
-  /**
-   * Redirect user to their designated dashboard
-   */
   redirectByRole(role) {
     if (role === "admin") {
       window.location.href = "admin-dashboard.html";
@@ -112,10 +101,7 @@ const PaduraAuth = {
     }
   },
 
-  /**
-   * Sign out current user
-   */
-  async logout() {
+  async logout(reason = "") {
     try {
       const client = window.getSupabaseClient();
       if (client) {
@@ -124,16 +110,15 @@ const PaduraAuth = {
     } catch (err) {
       console.warn("Sign out error:", err);
     } finally {
+      clearTimeout(this.inactivityTimer);
       this.currentUser = null;
       this.currentProfile = null;
       sessionStorage.clear();
-      window.location.href = "login.html";
+      const suffix = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+      window.location.href = `login.html${suffix}`;
     }
   },
 
-  /**
-   * Protect page by requiring authentication and role validation
-   */
   async requireAuth(allowedRoles = []) {
     const client = window.getSupabaseClient();
     if (!client) {
@@ -149,7 +134,6 @@ const PaduraAuth = {
 
     this.currentUser = session.user;
 
-    // Fetch live profile
     const { data: profile, error: profileError } = await client
       .from("profiles")
       .select("id, role, username, full_name, status")
@@ -161,7 +145,6 @@ const PaduraAuth = {
       return null;
     }
 
-    // Role verification
     if (allowedRoles.length > 0 && !allowedRoles.includes(profile.role)) {
       window.showToast("Unauthorized page access. Redirecting...", "error");
       this.redirectByRole(profile.role);
@@ -171,29 +154,26 @@ const PaduraAuth = {
     this.currentProfile = profile;
     sessionStorage.setItem("padura_user_profile", JSON.stringify(profile));
 
-    // Update Header UI elements
     this.updateUserUI(profile);
-
-    // Initialize auto-logout for inactivity
     this.setupInactivityWatcher();
 
     return profile;
   },
 
-  /**
-   * Update navigation bar with user details
-   */
   updateUserUI(profile) {
     const userNameEl = document.getElementById("nav-user-name");
     const userRoleEl = document.getElementById("nav-user-role");
     const userAvatarEl = document.getElementById("nav-user-avatar");
 
-    if (userNameEl) userNameEl.textContent = profile.full_name;
-    if (userRoleEl) userRoleEl.textContent = profile.role.toUpperCase();
+    const safeName = profile.full_name || profile.username || "User";
+
+    if (userNameEl) userNameEl.textContent = safeName;
+    if (userRoleEl) userRoleEl.textContent = (profile.role || "").toUpperCase();
     if (userAvatarEl) {
-      const initials = profile.full_name
-        .split(" ")
-        .map((n) => n[0])
+      const initials = safeName
+        .trim()
+        .split(/\s+/)
+        .map((n) => n[0] || "")
         .slice(0, 2)
         .join("")
         .toUpperCase();
@@ -201,15 +181,12 @@ const PaduraAuth = {
     }
   },
 
-  /**
-   * Auto-logout on 15 minutes of inactivity
-   */
   setupInactivityWatcher() {
     const resetTimer = () => {
       clearTimeout(this.inactivityTimer);
       this.inactivityTimer = setTimeout(() => {
-        alert("You have been automatically logged out due to 15 minutes of inactivity.");
-        PaduraAuth.logout();
+        // Log out immediately without blocking on alert()
+        PaduraAuth.logout("timeout");
       }, window.PADURA_CONFIG.INACTIVITY_TIMEOUT_MS);
     };
 
@@ -220,5 +197,13 @@ const PaduraAuth = {
     resetTimer();
   },
 };
+
+// Show timeout notice automatically if redirected back to login.html
+document.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("reason") === "timeout" && window.showToast) {
+    window.showToast("You were logged out after 15 minutes of inactivity.", "warning", 6000);
+  }
+});
 
 window.PaduraAuth = PaduraAuth;

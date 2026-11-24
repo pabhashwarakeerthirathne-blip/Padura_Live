@@ -58,6 +58,22 @@ function getSupabaseClient() {
 /**
  * Toast Notification System
  */
+/**
+ * HTML Escaping Utility (prevents XSS across all dashboards)
+ */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Toast Notification System
+ */
 function showToast(message, type = "info", duration = 4000) {
   let container = document.getElementById("toast-container");
   if (!container) {
@@ -78,7 +94,7 @@ function showToast(message, type = "info", duration = 4000) {
 
   toast.innerHTML = `
     ${iconSvg}
-    <div style="flex-grow:1; line-height: 1.4;">${message}</div>
+    <div style="flex-grow:1; line-height: 1.4;">${escapeHtml(message)}</div>
   `;
 
   container.appendChild(toast);
@@ -140,3 +156,4 @@ window.showToast = showToast;
 window.extractYouTubeVideoId = extractYouTubeVideoId;
 window.isValidStudentNumber = isValidStudentNumber;
 window.formatDateTime = formatDateTime;
+window.escapeHtml = escapeHtml;
