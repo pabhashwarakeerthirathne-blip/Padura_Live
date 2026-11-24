@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard – PADURA LIVE</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/dashboard.css">
+</head>
+<body>
+  <!-- Fixed Padura Photo Background Backdrop -->
+  <div class="padura-bg-backdrop"></div>
+  <div class="ambient-glow"></div>
+
+  <!-- Top Navigation -->
+  <header class="top-nav">
+    <a href="admin-dashboard.html" class="brand-wrapper">
+      <img src="assets/images/logo.svg" alt="Padura Live" class="brand-logo-img">
+      <div>
+        <div class="brand-name">PADURA LIVE</div>
+        <div class="brand-tagline">Administrator Operations</div>
+      </div>
+    </a>
+
+    <div class="user-menu">
+      <div class="user-badge">
+        <div class="user-avatar" id="nav-user-avatar">A</div>
+        <div class="user-info-text">
+          <div class="user-name" id="nav-user-name">Administrator</div>
+          <div class="user-meta" id="nav-user-role">SUPER ADMIN</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-logout">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+        </svg>
+        Sign Out
+      </button>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <nav class="sidebar-nav">
+        <a href="#overview" class="nav-item active" data-tab="overview">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          Overview
+        </a>
+        <a href="#broadcasts" class="nav-item" data-tab="broadcasts">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Live Broadcasts
+        </a>
+        <a href="#students" class="nav-item" data-tab="students">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          Student Accounts
+        </a>
+        <a href="#bulk_import" class="nav-item" data-tab="bulk_import">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          Bulk Registration
+        </a>
+        <a href="#parents" class="nav-item" data-tab="parents">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          Parent Accounts
+        </a>
+        <a href="#logs" class="nav-item" data-tab="logs">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          System Logs
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+      <!-- ==================================================================== -->
+      <!-- TAB 1: OVERVIEW -->
+      <!-- ==================================================================== -->
+      <div class="tab-pane" id="tab-overview">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <h2>Platform Overview</h2>
+            <p>Real-time metrics, live streaming status, and account activity.</p>
+          </div>
+        </div>
+
+        <!-- Metric Stat Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-content">
+              <span class="stat-label">Total Students</span>
+              <span class="stat-value" id="stat-total-students">0</span>
+              <span class="stat-subtext">Registered undergraduates</span>
+            </div>
+            <div class="stat-icon">
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-content">
+              <span class="stat-label">Total Parents</span>
+              <span class="stat-value" id="stat-total-parents">0</span>
+              <span class="stat-subtext">Linked guardians</span>
+            </div>
+            <div class="stat-icon">
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-content">
+              <span class="stat-label">Active / Inactive</span>
+              <span class="stat-value">
+                <span id="stat-active-accounts" style="color:var(--success);">0</span> / <span id="stat-inactive-accounts" style="color:#F87171;">0</span>
+              </span>
+              <span class="stat-subtext">Access statuses</span>
+            </div>
+            <div class="stat-icon">
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-card live-stream-card">
+            <div class="stat-content">
+              <span class="stat-label">Current Broadcast</span>
+              <span class="stat-value" id="stat-live-broadcast-val" style="font-size:1.4rem;">OFFLINE</span>
+              <span class="stat-subtext truncate" id="stat-live-broadcast-sub" style="max-width: 170px;">Checking status...</span>
+            </div>
+            <div class="stat-icon">
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activities Split Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem;">
+          <!-- Recent Logins -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Recent User Logins</h3>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <div class="table-responsive" style="border: none;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Account</th>
+                      <th>Status</th>
+                      <th>Time</th>
+                      <th>Client</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overview-recent-logins">
+                    <tr><td colspan="4" class="text-center" style="padding: 1.5rem; color:var(--text-dim);">Loading login activity...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Administrator Activity -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Administrator Audit Trail</h3>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <div class="table-responsive" style="border: none;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Details</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overview-recent-admin-logs">
+                    <tr><td colspan="3" class="text-center" style="padding: 1.5rem; color:var(--text-dim);">Loading audit trail...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- TAB 2: BROADCAST MANAGEMENT -->
+      <!-- ==================================================================== -->
+      <div class="tab-pane hidden" id="tab-broadcasts">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <h2>Broadcast Management</h2>
+            <p>Add, publish, schedule, or switch unlisted YouTube Live streams.</p>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="openNewBroadcastModal()">
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Live Stream
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body" style="padding: 0;">
+            <div class="table-responsive" style="border: none;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Broadcast Title</th>
+                    <th>YouTube ID</th>
+                    <th>Live Status</th>
+                    <th>Visibility</th>
+                    <th>Event Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="broadcasts-table-body">
+                  <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading broadcasts...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- TAB 3: STUDENT MANAGEMENT -->
+      <!-- ==================================================================== -->
+      <div class="tab-pane hidden" id="tab-students">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <h2>Student Directory</h2>
+            <p>Manage individual undergraduate accounts, reset passwords, and toggle active status.</p>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="window.openModal('modal-individual-student')">
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Add Student
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-group">
+            <div class="search-box">
+              <input type="text" id="search-students" class="form-input" placeholder="Search by student number or name...">
+            </div>
+            <select id="filter-student-year" class="form-select" style="width: auto;">
+              <option value="ALL">All Academic Years</option>
+              <option value="2023">Year 2023</option>
+              <option value="2024">Year 2024</option>
+              <option value="2025">Year 2025</option>
+              <option value="2026">Year 2026</option>
+            </select>
+            <select id="filter-student-status" class="form-select" style="width: auto;">
+              <option value="ALL">All Statuses</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body" style="padding: 0;">
+            <div class="table-responsive" style="border: none;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Student Number</th>
+                    <th>Full Name</th>
+                    <th>Username</th>
+                    <th>Academic Year</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="students-table-body">
+                  <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading student records...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- TAB 4: BULK CSV & EXCEL IMPORT -->
+      <!-- ==================================================================== -->
+      <div class="tab-pane hidden" id="tab-bulk_import">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <h2>Bulk Student Registration</h2>
+            <p>Batch create student accounts via CSV or Excel (.xlsx) spreadsheets.</p>
+          </div>
+          <div>
+            <a href="sample_students.csv" download class="btn btn-secondary">
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download Sample CSV Template
+            </a>
+          </div>
+        </div>
+
+        <!-- Upload Dropzone Card -->
+        <div class="card">
+          <div class="card-body">
+            <div class="dropzone" id="bulk-dropzone">
+              <svg class="dropzone-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <h3 style="font-size: 1.15rem; margin-bottom: 0.35rem;">Drag & drop your CSV or Excel file here</h3>
+              <p style="font-size: 0.85rem; color: var(--text-dim);">Supports .csv and .xlsx files. Format: Student Number, Username, Password, Full Name, Academic Year</p>
+              <input type="file" id="bulk-file-input" accept=".csv, .xlsx, .xls" style="display: none;">
+            </div>
+
+            <!-- File details -->
+            <div id="bulk-file-info" class="file-preview-info hidden">
+              <div>
+                <strong id="bulk-file-name" style="color: #A78BFA;">filename.csv</strong>
+                <div id="bulk-preview-summary" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;"></div>
+              </div>
+              <button class="btn btn-primary" id="btn-start-bulk-import">
+                Start Account Creation
+              </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="bulk-progress-container" class="progress-container hidden">
+              <div class="progress-track">
+                <div class="progress-fill" id="bulk-progress-bar"></div>
+              </div>
+              <div id="bulk-progress-text" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; text-align: center;">
+                Processing accounts...
+              </div>
+            </div>
+
+            <!-- Results Metrics -->
+            <div id="bulk-results-container" class="hidden" style="margin-top: 1.5rem; padding: 1.25rem; background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; gap: 2rem;">
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total Rows</span>
+                    <div id="bulk-stat-total" class="mono" style="font-size: 1.4rem; font-weight: 700;">0</div>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Created</span>
+                    <div id="bulk-stat-success" class="mono" style="font-size: 1.4rem; font-weight: 700; color: var(--success);">0</div>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Failed</span>
+                    <div id="bulk-stat-failed" class="mono" style="font-size: 1.4rem; font-weight: 700; color: var(--live-red);">0</div>
+                  </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="btn-download-error-report" style="display: none;">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download Error Report (.csv)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pre-import Validation Table -->
+        <div id="bulk-preview-container" class="card hidden">
+          <div class="card-header">
+            <h3>File Data Preview & Validation Status</h3>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="table-responsive" style="border: none;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Student Number</th>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Academic Year</th>
+                    <th>Format Status</th>
+                  </tr>
+                </thead>
+                <tbody id="bulk-preview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- TAB 5: PARENT MANAGEMENT -->
+      <!-- ==================================================================== -->
+      <div class="tab-pane hidden" id="tab-parents">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <h2>Parent Directory</h2>
+            <p>Manage parent login credentials and link them to their respective students.</p>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="window.openModal('modal-add-parent')">
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Add Parent Account
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body" style="padding: 0;">
+            <div class="table-responsive" style="border: none;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Parent Name / Username</th>
+                    <th>Contact Phone</th>
+                    <th>Linked Student(s)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="parents-table-body">
+                  <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading parents...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================== -->
+      <!-- TAB 6: AUDIT LOGS -->
+      <!-- ==================================================================== -->
+      <div class="tab-pane hidden" id="tab-logs">
+        <div class="dashboard-header">
+          <div class="dashboard-title">
+            <h2>System Audit Trail</h2>
+            <p>Immutable log of administrative operations and account modifications.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body" style="padding: 0;">
+            <div class="table-responsive" style="border: none;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Action</th>
+                    <th>Event Payload</th>
+                  </tr>
+                </thead>
+                <tbody id="full-admin-logs-tbody">
+                  <tr><td colspan="3" class="text-center" style="padding: 2rem;">Loading audit logs...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ======================================================================== -->
+  <!-- MODALS -->
+  <!-- ======================================================================== -->
+
+  <!-- 1. Add / Edit Broadcast Modal -->
+  <div class="modal-backdrop" id="modal-broadcast">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-broadcast-title">Add Live Stream Broadcast</h3>
+        <button class="modal-close" onclick="window.closeModal('modal-broadcast')">&times;</button>
+      </div>
+      <form id="broadcast-form">
+        <div class="modal-body">
+          <input type="hidden" id="broadcast-id-input">
+
+          <div class="form-group">
+            <label class="form-label">Broadcast Title <span class="required">*</span></label>
+            <input type="text" id="broadcast-title" class="form-input" placeholder="e.g. Annual Convocation Ceremony 2026" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea id="broadcast-desc" class="form-textarea" placeholder="Event description, timetable, or guidelines..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">YouTube Live Stream URL or Video ID <span class="required">*</span></label>
+            <input type="text" id="broadcast-yt-url" class="form-input" placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or youtu.be/..." required>
+            <div id="broadcast-extracted-id-preview" style="font-size: 0.775rem; margin-top: 0.35rem; font-family: var(--font-mono);"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Scheduled Date & Time</label>
+            <input type="datetime-local" id="broadcast-date" class="form-input">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Broadcast Status</label>
+              <select id="broadcast-status-select" class="form-select">
+                <option value="draft">Draft (Offline)</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="live">Live Now</option>
+                <option value="ended">Ended</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Audience Access</label>
+              <select id="broadcast-access-type" class="form-select">
+                <option value="all">All Academic Years</option>
+                <option value="academic_year">Restricted by Academic Year</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" id="access-years-group">
+            <label class="form-label">Authorized Academic Years</label>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem;">
+                <input type="checkbox" name="access_years" value="2023" checked> Year 2023
+              </label>
+              <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem;">
+                <input type="checkbox" name="access_years" value="2024" checked> Year 2024
+              </label>
+              <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem;">
+                <input type="checkbox" name="access_years" value="2025" checked> Year 2025
+              </label>
+              <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem;">
+                <input type="checkbox" name="access_years" value="2026" checked> Year 2026
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="display: flex; align-items: center; gap: 0.65rem; cursor: pointer;">
+              <input type="checkbox" id="broadcast-publish-toggle" checked style="width: 16px; height: 16px;">
+              <span style="font-size: 0.875rem; font-weight: 600;">Publish to Students & Parents Portal</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.closeModal('modal-broadcast')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Broadcast</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Add Individual Student Modal -->
+  <div class="modal-backdrop" id="modal-individual-student">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add Individual Student</h3>
+        <button class="modal-close" onclick="window.closeModal('modal-individual-student')">&times;</button>
+      </div>
+      <form id="individual-student-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Student Registration Number <span class="required">*</span></label>
+            <input type="text" id="indiv-student-number" class="form-input" placeholder="e.g. PS/2023/174" required>
+            <div style="font-size:0.725rem; color:var(--text-dim); margin-top:2px;">Format: XX/YYYY/NNN (Any two capital letters / Year / Number)</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="required">*</span></label>
+            <input type="text" id="indiv-student-name" class="form-input" placeholder="e.g. Kasun Fernando" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Username <span class="required">*</span></label>
+              <input type="text" id="indiv-student-username" class="form-input" placeholder="e.g. ps2023174" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Academic Year <span class="required">*</span></label>
+              <input type="number" id="indiv-student-year" class="form-input" value="2023" min="2000" max="2100" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Temporary Password <span class="required">*</span></label>
+            <input type="password" id="indiv-student-password" class="form-input" placeholder="Min 6 characters" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.closeModal('modal-individual-student')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Student Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Add Parent Modal -->
+  <div class="modal-backdrop" id="modal-add-parent">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Create Parent Account</h3>
+        <button class="modal-close" onclick="window.closeModal('modal-add-parent')">&times;</button>
+      </div>
+      <form id="add-parent-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Parent Full Name <span class="required">*</span></label>
+            <input type="text" id="parent-name" class="form-input" placeholder="e.g. Sunil Perera" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Username <span class="required">*</span></label>
+              <input type="text" id="parent-username" class="form-input" placeholder="e.g. parent_sunil" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Phone</label>
+              <input type="text" id="parent-phone" class="form-input" placeholder="e.g. +94 77 123 4567">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Password <span class="required">*</span></label>
+            <input type="password" id="parent-password" class="form-input" placeholder="Min 6 characters" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Assign Student Numbers (comma separated)</label>
+            <input type="text" id="parent-assign-students" class="form-input" placeholder="e.g. PS/2023/174, SC/2024/021">
+            <div style="font-size:0.725rem; color:var(--text-dim); margin-top:2px;">Enter valid registration numbers to link this parent account.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notes / Identification</label>
+            <textarea id="parent-notes" class="form-textarea" placeholder="Optional notes..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.closeModal('modal-add-parent')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Parent Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Reset Password Modal -->
+  <div class="modal-backdrop" id="modal-reset-password">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Reset User Password</h3>
+        <button class="modal-close" onclick="window.closeModal('modal-reset-password')">&times;</button>
+      </div>
+      <form id="reset-password-form">
+        <div class="modal-body">
+          <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:1.25rem;">
+            Assign a new secure password for <strong id="reset-pw-user-name" style="color:var(--text-main);">User</strong>.
+          </p>
+          <div class="form-group">
+            <label class="form-label">New Password (min 6 characters) <span class="required">*</span></label>
+            <input type="password" id="reset-pw-input" class="form-input" placeholder="Enter new password" required minlength="6">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="window.closeModal('modal-reset-password')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SheetJS CDN (for Excel .xlsx parsing in browser) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- App JS -->
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/admin.js"></script>
+  <script>
+    function openNewBroadcastModal() {
+      document.getElementById("modal-broadcast-title").textContent = "Add Live Stream Broadcast";
+      document.getElementById("broadcast-form").reset();
+      document.getElementById("broadcast-id-input").value = "";
+      document.getElementById("broadcast-extracted-id-preview").innerHTML = "";
+      window.openModal("modal-broadcast");
+    }
+  </script>
+</body>
+</html>
