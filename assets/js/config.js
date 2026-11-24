@@ -6,8 +6,8 @@
 
 window.PADURA_CONFIG = {
   // Replace these with your actual Supabase project credentials in production
-  SUPABASE_URL: "https://your-project.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your-anon-key",
+  SUPABASE_URL: "https://nepubrjjpfxqtrednevl.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_sEcM1v3_A1j_Qf3f64X-nQ_OU0vSG5U",
   
   // Edge Function Endpoints (automatically resolved relative to SUPABASE_URL)
   get EDGE_BULK_IMPORT_URL() {
