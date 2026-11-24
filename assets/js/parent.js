@@ -20,11 +20,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       .from("parent_students")
       .select(`
         student_id,
-        students:student_id (
+        students (
           id,
           student_number,
           academic_year,
-          profiles:id (
+          profiles (
             full_name,
             username
           )

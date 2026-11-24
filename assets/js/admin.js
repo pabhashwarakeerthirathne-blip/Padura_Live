@@ -380,7 +380,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           id,
           student_number,
           academic_year,
-          profiles:id (
+          profiles (
             username,
             full_name,
             status,
@@ -805,17 +805,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           id,
           phone,
           notes,
-          profiles:id (
+          profiles (
             username,
             full_name,
             status,
             created_at
           ),
           parent_students (
-            students:student_id (
+            students (
               id,
               student_number,
-              profiles:id (
+              profiles (
                 full_name
               )
             )
