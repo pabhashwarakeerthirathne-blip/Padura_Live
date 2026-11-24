@@ -1,11 +1,9 @@
 // ==============================================================================
-// PADURA LIVE - USER MANAGEMENT EDGE FUNCTION (Deno / Supabase Edge)
+// PADURA LIVE - USER MANAGEMENT EDGE FUNCTION (Deno 2 / Supabase Edge)
 // Administrative user actions: creation, password resets, status toggle, deletion.
-// Service role key runs isolated on Edge server. Admin JWT strictly verified.
 // ==============================================================================
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,57 +11,85 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-serve(async (req: Request) => {
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function toSyntheticEmail(username: string): string {
+  const sanitized = username.trim().toLowerCase().replace(/[^a-z0-9]/g, "_");
+  return `${sanitized}@paduralive.local`;
+}
+
+function getAdminKey(): string {
+  // Prefer Supabase's newer secret key dictionary; fall back to legacy service_role key
+  const secretKeysRaw = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (secretKeysRaw) {
+    try {
+      const parsed = JSON.parse(secretKeysRaw);
+      if (typeof parsed.default === "string" && parsed.default) {
+        return parsed.default;
+      }
+      const firstKey = Object.values(parsed).find(
+        (v): v is string => typeof v === "string" && v.length > 0
+      );
+      if (firstKey) return firstKey;
+    } catch {
+      // Fall through to legacy env var
+    }
+  }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+}
+
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseAdminKey = getAdminKey();
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(
-        JSON.stringify({ error: "Missing server environment variables." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!supabaseUrl || !supabaseAdminKey) {
+      return jsonResponse({ error: "Missing SUPABASE_URL or admin secret key." }, 500);
     }
 
-    // Verify Admin JWT
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
+      return jsonResponse({ error: "Missing authorization header." }, 401);
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const callerClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
+    const adminClient = createClient(supabaseUrl, supabaseAdminKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: { user }, error: userError } = await callerClient.auth.getUser();
+    const { data: { user }, error: userError } = await adminClient.auth.getUser(token);
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid session." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: `Invalid session: ${userError?.message || "Unauthorized"}` }, 401);
     }
 
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { data: profile } = await adminClient
+    const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("role, status")
       .eq("id", user.id)
       .single();
 
+    if (profileError) {
+      return jsonResponse(
+        { error: `Admin profile check failed (${profileError.code || "DB"}): ${profileError.message}` },
+        403
+      );
+    }
+
     if (!profile || profile.role !== "admin" || profile.status !== "active") {
-      return new Response(
-        JSON.stringify({ error: "Access denied. Active Admin credentials required." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResponse(
+        {
+          error: `Access denied for ${user.email} (role=${profile?.role ?? "none"}, status=${profile?.status ?? "none"}). Active Admin credentials required.`,
+        },
+        403
       );
     }
 
@@ -82,33 +108,24 @@ serve(async (req: Request) => {
       const studentNumberRegex = /^[A-Z]{2}\/[0-9]{4}\/[0-9]+$/;
 
       if (!cleanNumber || !cleanUsername || !cleanName || isNaN(year) || !password) {
-        return new Response(
-          JSON.stringify({ error: "All student fields are required." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "All student fields are required." }, 400);
       }
 
       if (!studentNumberRegex.test(cleanNumber)) {
-        return new Response(
-          JSON.stringify({ error: "Invalid student number format. Expected: XX/YYYY/NNN" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "Invalid student number format. Expected: XX/YYYY/NNN" }, 400);
       }
 
-      const syntheticEmail = `${cleanUsername.replace(/[^a-z0-9_.-]/g, "")}@paduralive.local`;
+      const syntheticEmail = toSyntheticEmail(cleanUsername);
 
       const { data: authUser, error: authErr } = await adminClient.auth.admin.createUser({
         email: syntheticEmail,
-        password: password,
+        password,
         email_confirm: true,
         user_metadata: { username: cleanUsername, full_name: cleanName, role: "student" },
       });
 
       if (authErr || !authUser.user) {
-        return new Response(
-          JSON.stringify({ error: authErr?.message || "Failed to create user in auth engine." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: authErr?.message || "Failed to create user in auth engine." }, 400);
       }
 
       const userId = authUser.user.id;
@@ -123,10 +140,7 @@ serve(async (req: Request) => {
 
       if (profErr) {
         await adminClient.auth.admin.deleteUser(userId);
-        return new Response(
-          JSON.stringify({ error: `Profile error: ${profErr.message}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: `Profile error: ${profErr.message}` }, 400);
       }
 
       const { error: studErr } = await adminClient.from("students").insert({
@@ -138,10 +152,7 @@ serve(async (req: Request) => {
       if (studErr) {
         await adminClient.from("profiles").delete().eq("id", userId);
         await adminClient.auth.admin.deleteUser(userId);
-        return new Response(
-          JSON.stringify({ error: `Student table error: ${studErr.message}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: `Student table error: ${studErr.message}` }, 400);
       }
 
       await adminClient.from("admin_logs").insert({
@@ -150,10 +161,7 @@ serve(async (req: Request) => {
         details: { student_id: userId, student_number: cleanNumber, username: cleanUsername },
       });
 
-      return new Response(
-        JSON.stringify({ success: true, userId, message: "Student account created successfully." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, userId, message: "Student account created successfully." });
     }
 
     // --------------------------------------------------------------------------
@@ -165,31 +173,25 @@ serve(async (req: Request) => {
       const cleanName = (fullName || "").trim();
 
       if (!cleanUsername || !cleanName || !password) {
-        return new Response(
-          JSON.stringify({ error: "Username, full name, and password are required." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "Username, full name, and password are required." }, 400);
       }
 
-      const syntheticEmail = `${cleanUsername.replace(/[^a-z0-9_.-]/g, "")}@paduralive.local`;
+      const syntheticEmail = toSyntheticEmail(cleanUsername);
 
       const { data: authUser, error: authErr } = await adminClient.auth.admin.createUser({
         email: syntheticEmail,
-        password: password,
+        password,
         email_confirm: true,
         user_metadata: { username: cleanUsername, full_name: cleanName, role: "parent" },
       });
 
       if (authErr || !authUser.user) {
-        return new Response(
-          JSON.stringify({ error: authErr?.message || "Failed to create parent auth account." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: authErr?.message || "Failed to create parent auth account." }, 400);
       }
 
       const parentId = authUser.user.id;
 
-      await adminClient.from("profiles").insert({
+      const { error: profErr } = await adminClient.from("profiles").insert({
         id: parentId,
         role: "parent",
         username: cleanUsername,
@@ -197,19 +199,32 @@ serve(async (req: Request) => {
         status: "active",
       });
 
-      await adminClient.from("parents").insert({
+      if (profErr) {
+        await adminClient.auth.admin.deleteUser(parentId);
+        return jsonResponse({ error: `Profile error: ${profErr.message}` }, 400);
+      }
+
+      const { error: parentErr } = await adminClient.from("parents").insert({
         id: parentId,
         phone: phone || null,
         notes: notes || null,
       });
 
-      // Link assigned students if provided
+      if (parentErr) {
+        await adminClient.from("profiles").delete().eq("id", parentId);
+        await adminClient.auth.admin.deleteUser(parentId);
+        return jsonResponse({ error: `Parent table error: ${parentErr.message}` }, 400);
+      }
+
       if (Array.isArray(studentIds) && studentIds.length > 0) {
         const links = studentIds.map((sid: string) => ({
           parent_id: parentId,
           student_id: sid,
         }));
-        await adminClient.from("parent_students").insert(links);
+        const { error: linkErr } = await adminClient.from("parent_students").insert(links);
+        if (linkErr) {
+          return jsonResponse({ error: `Parent created, but linking students failed: ${linkErr.message}` }, 400);
+        }
       }
 
       await adminClient.from("admin_logs").insert({
@@ -218,10 +233,7 @@ serve(async (req: Request) => {
         details: { parent_id: parentId, username: cleanUsername, linkedCount: studentIds?.length || 0 },
       });
 
-      return new Response(
-        JSON.stringify({ success: true, parentId, message: "Parent account created successfully." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, parentId, message: "Parent account created successfully." });
     }
 
     // --------------------------------------------------------------------------
@@ -230,10 +242,7 @@ serve(async (req: Request) => {
     if (action === "reset_password") {
       const { targetUserId, newPassword } = body;
       if (!targetUserId || !newPassword || newPassword.length < 6) {
-        return new Response(
-          JSON.stringify({ error: "User ID and new password (min 6 chars) required." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "User ID and new password (min 6 chars) required." }, 400);
       }
 
       const { error: updateErr } = await adminClient.auth.admin.updateUserById(targetUserId, {
@@ -241,10 +250,7 @@ serve(async (req: Request) => {
       });
 
       if (updateErr) {
-        return new Response(
-          JSON.stringify({ error: updateErr.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: updateErr.message }, 400);
       }
 
       await adminClient.from("admin_logs").insert({
@@ -253,10 +259,7 @@ serve(async (req: Request) => {
         details: { target_user_id: targetUserId },
       });
 
-      return new Response(
-        JSON.stringify({ success: true, message: "Password updated successfully." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, message: "Password updated successfully." });
     }
 
     // --------------------------------------------------------------------------
@@ -265,10 +268,7 @@ serve(async (req: Request) => {
     if (action === "toggle_status") {
       const { targetUserId, status } = body;
       if (!targetUserId || !["active", "inactive"].includes(status)) {
-        return new Response(
-          JSON.stringify({ error: "Invalid target user or status." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "Invalid target user or status." }, 400);
       }
 
       const { error: statusErr } = await adminClient
@@ -277,21 +277,15 @@ serve(async (req: Request) => {
         .eq("id", targetUserId);
 
       if (statusErr) {
-        return new Response(
-          JSON.stringify({ error: statusErr.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: statusErr.message }, 400);
       }
 
-      // If deactivated, revoke/ban auth session
-      if (status === "inactive") {
-        await adminClient.auth.admin.updateUserById(targetUserId, {
-          ban_duration: "876000h", // effectively suspended
-        });
-      } else {
-        await adminClient.auth.admin.updateUserById(targetUserId, {
-          ban_duration: "none",
-        });
+      const { error: banErr } = await adminClient.auth.admin.updateUserById(targetUserId, {
+        ban_duration: status === "inactive" ? "876000h" : "none",
+      });
+
+      if (banErr) {
+        return jsonResponse({ error: banErr.message }, 400);
       }
 
       await adminClient.from("admin_logs").insert({
@@ -300,10 +294,7 @@ serve(async (req: Request) => {
         details: { target_user_id: targetUserId, new_status: status },
       });
 
-      return new Response(
-        JSON.stringify({ success: true, message: `Account status updated to ${status}.` }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, message: `Account status updated to ${status}.` });
     }
 
     // --------------------------------------------------------------------------
@@ -312,19 +303,12 @@ serve(async (req: Request) => {
     if (action === "delete_user") {
       const { targetUserId } = body;
       if (!targetUserId) {
-        return new Response(
-          JSON.stringify({ error: "targetUserId is required." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "targetUserId is required." }, 400);
       }
 
-      // Delete from auth engine (cascades to profiles, students, etc.)
       const { error: delErr } = await adminClient.auth.admin.deleteUser(targetUserId);
       if (delErr) {
-        return new Response(
-          JSON.stringify({ error: delErr.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: delErr.message }, 400);
       }
 
       await adminClient.from("admin_logs").insert({
@@ -333,20 +317,12 @@ serve(async (req: Request) => {
         details: { target_user_id: targetUserId },
       });
 
-      return new Response(
-        JSON.stringify({ success: true, message: "User deleted completely." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, message: "User deleted completely." });
     }
 
-    return new Response(
-      JSON.stringify({ error: `Unknown action '${action}'` }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err: any) {
-    return new Response(
-      JSON.stringify({ error: err.message || "Server exception" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: `Unknown action '${action}'` }, 400);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Server exception";
+    return jsonResponse({ error: message }, 500);
   }
 });

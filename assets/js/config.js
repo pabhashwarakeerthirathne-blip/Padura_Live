@@ -5,6 +5,10 @@
  */
 
 window.PADURA_CONFIG = {
+  // Remove Devtool Permissions
+  SILENCE_NON_ERROR_CONSOLE: true,
+  BLOCK_DEVTOOLS: true,
+  
   // Replace these with your actual Supabase project credentials in production
   SUPABASE_URL: "https://nepubrjjpfxqtrednevl.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_sEcM1v3_A1j_Qf3f64X-nQ_OU0vSG5U",
@@ -26,6 +30,21 @@ window.PADURA_CONFIG = {
   // Watermark relocation interval (20 seconds)
   WATERMARK_INTERVAL_MS: 20 * 1000,
 };
+
+// Keep console.error working, silence all other console output in production
+(function restrictConsoleToErrorsOnly() {
+  const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  if (!window.PADURA_CONFIG.SILENCE_NON_ERROR_CONSOLE || isLocal) return;
+
+  const noop = () => {};
+  ["log", "info", "debug", "warn", "table", "dir", "trace", "group", "groupEnd"].forEach(
+    (method) => {
+      if (typeof console[method] === "function") {
+        console[method] = noop;
+      }
+    }
+  );
+})();
 
 // Allow runtime override via localStorage for effortless zero-code configuration in demo/testing
 if (localStorage.getItem("padura_supabase_url")) {
@@ -149,6 +168,7 @@ function formatDateTime(dateInput) {
     minute: "2-digit",
   });
 }
+
 
 // Export to window
 window.getSupabaseClient = getSupabaseClient;
