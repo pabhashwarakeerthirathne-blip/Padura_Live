@@ -1,7 +1,7 @@
 /**
  * PADURA LIVE - CUSTOM YOUTUBE IFRAME LIVE PLAYER CONTROLLER
  * Integrates YouTube IFrame Player API with custom controls,
- * click & drag DVR timeline scrubbing, speed selection, volume, and fullscreen.
+ * synced click & drag DVR timeline scrubbing, speed selection, volume, and fullscreen.
  */
 
 class PaduraPlayer {
@@ -19,12 +19,18 @@ class PaduraPlayer {
     this.isMuted = false;
     this.volume = 100;
     this.currentSpeed = 1;
+
     this.dvrAvailable = false;
+    this.isLiveStream = false;
+    this.initialDuration = 0;
+    this.liveEdge = 0;
     this.duration = 0;
     this.currentTime = 0;
+    this.lastLoopTime = 0;
 
     this.isDragging = false;
     this.dragTargetTime = 0;
+    this.pendingSeekTarget = null;
     this.seekLockUntil = 0;
 
     this.timelineInterval = null;
@@ -51,6 +57,9 @@ class PaduraPlayer {
     this.playIcon = document.getElementById("play-icon");
     this.pauseIcon = document.getElementById("pause-icon");
     this.timelineWrapper = document.getElementById("player-timeline-wrapper");
+    this.timelineTrack = this.timelineWrapper
+      ? this.timelineWrapper.querySelector(".player-timeline-track")
+      : null;
     this.playedBar = document.getElementById("player-played-bar");
     this.bufferBar = document.getElementById("player-buffer-bar");
     this.seekerHandle = document.getElementById("player-seeker-handle");
@@ -97,7 +106,10 @@ class PaduraPlayer {
 
   createPlayer() {
     if (!this.videoId) {
-      this.showOverlayMessage("No Stream Available", "No broadcast video has been assigned to this event.");
+      this.showOverlayMessage(
+        "No Stream Available",
+        "No broadcast video has been assigned to this event."
+      );
       return;
     }
 
@@ -166,7 +178,10 @@ class PaduraPlayer {
       case window.YT.PlayerState.ENDED:
         this.isPlaying = false;
         this.setPlayStateUI(false);
-        this.showOverlayMessage("Live Stream Concluded", "The live event has ended. Thank you for watching Padura Live.");
+        this.showOverlayMessage(
+          "Live Stream Concluded",
+          "The live event has ended. Thank you for watching Padura Live."
+        );
         if (window.PaduraSecurity) {
           window.PaduraSecurity.stopViewingHeartbeat();
         }
@@ -197,7 +212,8 @@ class PaduraPlayer {
       case 101:
       case 150:
         title = "Embedding Restricted";
-        desc = "The video owner has disabled embedding for this live stream. Please check YouTube live stream settings.";
+        desc =
+          "The video owner has disabled embedding for this live stream. Please check YouTube live stream settings.";
         break;
     }
 
@@ -223,7 +239,7 @@ class PaduraPlayer {
       this.liveSyncBtn.addEventListener("click", () => this.syncToLive());
     }
 
-    // Timeline Scrubber (supports click and drag on mouse & touch)
+    // Timeline Scrubber (click + drag on desktop & touch)
     if (this.timelineWrapper) {
       this.timelineWrapper.addEventListener("mousedown", (e) => {
         if (e.button !== 0) return;
@@ -287,7 +303,8 @@ class PaduraPlayer {
   }
 
   getSeekFromClientX(clientX) {
-    const rect = this.timelineWrapper.getBoundingClientRect();
+    const targetEl = this.timelineTrack || this.timelineWrapper;
+    const rect = targetEl.getBoundingClientRect();
     if (!rect.width || this.duration <= 0) {
       return { percentage: 0, targetTime: 0 };
     }
@@ -298,12 +315,13 @@ class PaduraPlayer {
 
   updateTimelineVisuals(targetTime, duration) {
     const safeDur = duration > 0 ? duration : 1;
-    const progressPct = Math.min(100, Math.max(0, (targetTime / safeDur) * 100));
+    const clampedTime = Math.max(0, Math.min(safeDur, targetTime));
+    const progressPct = (clampedTime / safeDur) * 100;
 
     if (this.playedBar) this.playedBar.style.width = `${progressPct}%`;
     if (this.seekerHandle) this.seekerHandle.style.left = `${progressPct}%`;
 
-    const diffFromLive = Math.max(0, duration - targetTime);
+    const diffFromLive = Math.max(0, safeDur - clampedTime);
     const isAtLiveEdge = diffFromLive <= 15;
     const liveLabel = this.liveSyncBtn ? this.liveSyncBtn.querySelector(".live-label") : null;
 
@@ -318,8 +336,16 @@ class PaduraPlayer {
     }
 
     if (this.timeDisplay) {
-      this.timeDisplay.textContent = `${this.formatTime(targetTime)} / ${this.formatTime(duration)}`;
+      this.timeDisplay.textContent = `${this.formatTime(clampedTime)} / ${this.formatTime(safeDur)}`;
     }
+  }
+
+  performSeek(targetTime) {
+    const clamped = Math.max(0, Math.min(this.duration, targetTime));
+    this.pendingSeekTarget = clamped;
+    this.seekLockUntil = Date.now() + 1200;
+    this.updateTimelineVisuals(clamped, this.duration);
+    this.ytPlayer.seekTo(clamped, true);
   }
 
   handleDragStart(clientX) {
@@ -350,9 +376,7 @@ class PaduraPlayer {
     const targetTime =
       clientX !== null ? this.getSeekFromClientX(clientX).targetTime : this.dragTargetTime;
 
-    this.seekLockUntil = Date.now() + 1500;
-    this.updateTimelineVisuals(targetTime, this.duration);
-    this.ytPlayer.seekTo(targetTime, true);
+    this.performSeek(targetTime);
   }
 
   handleMouseMove() {
@@ -393,19 +417,23 @@ class PaduraPlayer {
 
   seekRelative(seconds) {
     if (!this.isReady || !this.ytPlayer || !this.dvrAvailable) return;
-    const curr = this.ytPlayer.getCurrentTime() || 0;
-    const target = Math.max(0, Math.min(this.duration, curr + seconds));
-    this.seekLockUntil = Date.now() + 1500;
-    this.updateTimelineVisuals(target, this.duration);
-    this.ytPlayer.seekTo(target, true);
+    const baseTime =
+      this.pendingSeekTarget !== null ? this.pendingSeekTarget : this.ytPlayer.getCurrentTime() || 0;
+    this.performSeek(baseTime + seconds);
   }
 
   syncToLive() {
     if (!this.isReady || !this.ytPlayer) return;
-    if (this.duration > 0) {
-      this.seekLockUntil = Date.now() + 1000;
-      this.updateTimelineVisuals(this.duration, this.duration);
-      this.ytPlayer.seekTo(this.duration, true);
+    const rawDur = this.ytPlayer.getDuration() || 0;
+    const liveTarget = Math.max(rawDur, this.liveEdge, this.duration);
+
+    if (liveTarget > 0) {
+      // Overshoot slightly on live streams so YouTube snaps to the true live head
+      const seekTarget = this.isLiveStream ? liveTarget + 60 : liveTarget;
+      this.pendingSeekTarget = null;
+      this.seekLockUntil = Date.now() + 800;
+      this.updateTimelineVisuals(liveTarget, liveTarget);
+      this.ytPlayer.seekTo(seekTarget, true);
     }
     this.ytPlayer.playVideo();
   }
@@ -499,27 +527,65 @@ class PaduraPlayer {
 
   startTimeLoop() {
     clearInterval(this.timelineInterval);
+    this.lastLoopTime = Date.now();
+
     this.timelineInterval = setInterval(() => {
       if (!this.isReady || !this.ytPlayer) return;
 
+      const now = Date.now();
+      const dt = Math.max(0, (now - this.lastLoopTime) / 1000);
+      this.lastLoopTime = now;
+
       try {
         const cur = this.ytPlayer.getCurrentTime() || 0;
-        const dur = this.ytPlayer.getDuration() || 0;
+        const rawDur = this.ytPlayer.getDuration() || 0;
         const loadedFraction = this.ytPlayer.getVideoLoadedFraction() || 0;
+        const videoData =
+          typeof this.ytPlayer.getVideoData === "function" ? this.ytPlayer.getVideoData() : null;
 
-        this.currentTime = cur;
-        this.duration = dur;
-        this.dvrAvailable = dur > 0 && isFinite(dur);
-
-        if (this.bufferBar) {
-          this.bufferBar.style.width = `${loadedFraction * 100}%`;
+        // Detect live stream via API flag or growing duration
+        if (this.initialDuration === 0 && rawDur > 0) {
+          this.initialDuration = rawDur;
+        }
+        if (
+          (videoData && videoData.isLive) ||
+          (this.initialDuration > 0 && rawDur > this.initialDuration + 1)
+        ) {
+          this.isLiveStream = true;
         }
 
-        // Pause bar updates while dragging or right after seeking
-        if (this.isDragging || Date.now() < this.seekLockUntil) return;
+        // Keep live edge synced in real time even when YouTube's getDuration() lags
+        let effectiveDuration = rawDur;
+        if (this.isLiveStream) {
+          if (this.liveEdge > 0) {
+            this.liveEdge += dt;
+          }
+          this.liveEdge = Math.max(this.liveEdge, rawDur, cur);
+          effectiveDuration = this.liveEdge;
+        } else if (cur > rawDur && rawDur > 0) {
+          effectiveDuration = cur;
+        }
+
+        this.currentTime = cur;
+        this.duration = effectiveDuration;
+        this.dvrAvailable = effectiveDuration > 0 && isFinite(effectiveDuration);
+
+        if (this.bufferBar) {
+          this.bufferBar.style.width = `${Math.min(100, Math.max(0, loadedFraction * 100))}%`;
+        }
+
+        // Unlock seek as soon as YouTube actually moves to the target keyframe
+        if (this.pendingSeekTarget !== null) {
+          if (Math.abs(cur - this.pendingSeekTarget) <= 4 || now >= this.seekLockUntil) {
+            this.pendingSeekTarget = null;
+            this.seekLockUntil = 0;
+          }
+        }
+
+        if (this.isDragging || now < this.seekLockUntil) return;
 
         if (this.dvrAvailable) {
-          this.updateTimelineVisuals(cur, dur);
+          this.updateTimelineVisuals(cur, effectiveDuration);
           if (this.seekBackBtn) this.seekBackBtn.disabled = false;
           if (this.seekFwdBtn) this.seekFwdBtn.disabled = false;
         } else {
@@ -537,9 +603,9 @@ class PaduraPlayer {
           if (this.seekFwdBtn) this.seekFwdBtn.disabled = true;
         }
       } catch (err) {
-        // Player state accessing might occasionally throw if destroyed
+        // Player may be destroyed
       }
-    }, 500);
+    }, 200);
   }
 
   formatTime(seconds) {
@@ -576,6 +642,7 @@ class PaduraPlayer {
     clearInterval(this.timelineInterval);
     clearTimeout(this.controlsFadeTimer);
     this.isDragging = false;
+    this.pendingSeekTarget = null;
     if (this.wrapper) this.wrapper.classList.remove("is-dragging");
 
     window.removeEventListener("mousemove", this._onDragMove);
