@@ -14,14 +14,17 @@ class PaduraPlayer {
     this.onStateChangeCallback = options.onStateChange || null;
 
     this.ytPlayer = null;
+    this.isDestroyed = false;
     this.isReady = false;
     this.isPlaying = false;
     this.isMuted = false;
     this.volume = 100;
     this.currentSpeed = 1;
 
+    this.isLiveStream = options.isLive === true;
+    this.hasInitialLiveSynced = false;
+    this.userHasSeeked = false;
     this.dvrAvailable = false;
-    this.isLiveStream = false;
     this.initialDuration = 0;
     this.liveEdge = 0;
     this.duration = 0;
@@ -35,23 +38,29 @@ class PaduraPlayer {
 
     this.timelineInterval = null;
     this.controlsFadeTimer = null;
-
-    this._onDragMove = this.handleDragMove.bind(this);
-    this._onDragEnd = this.handleDragEnd.bind(this);
-    this._onDocClick = () => {
-      if (this.speedDropdown) this.speedDropdown.classList.remove("open");
-    };
+    this._listeners = [];
 
     this.init();
   }
 
+  /**
+   * Register an event listener so destroy() cleanly unbinds everything
+   */
+  addListener(target, type, handler, options) {
+    if (!target) return;
+    target.addEventListener(type, handler, options);
+    this._listeners.push({ target, type, handler, options });
+  }
+
+  /**
+   * Load YouTube API and initialize player
+   */
   init() {
     this.bindDomElements();
     this.loadYouTubeIframeAPI();
   }
 
   bindDomElements() {
-    this.wrapper = document.getElementById(this.wrapperId);
     this.wrapper = document.getElementById(this.wrapperId);
     this.clickShield =
       document.getElementById("player-click-shield") ||
@@ -85,6 +94,10 @@ class PaduraPlayer {
       this.titleDisplay.textContent = this.title;
     }
 
+    if (this.liveSyncBtn && !this.isLiveStream) {
+      this.liveSyncBtn.style.display = "none";
+    }
+
     this.setupEventListeners();
   }
 
@@ -97,18 +110,26 @@ class PaduraPlayer {
         tag = document.createElement("script");
         tag.src = "https://www.youtube.com/iframe_api";
         const firstScriptTag = document.getElementsByTagName("script")[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        if (firstScriptTag && firstScriptTag.parentNode) {
+          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        } else {
+          document.head.appendChild(tag);
+        }
       }
 
       const existingCallback = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
-        if (existingCallback) existingCallback();
-        this.createPlayer();
+        if (typeof existingCallback === "function") existingCallback();
+        if (!this.isDestroyed) {
+          this.createPlayer();
+        }
       };
     }
   }
 
   createPlayer() {
+    if (this.isDestroyed) return;
+
     if (!this.videoId) {
       this.showOverlayMessage(
         "No Stream Available",
@@ -142,6 +163,8 @@ class PaduraPlayer {
   }
 
   onPlayerReady(event) {
+    if (this.isDestroyed) return;
+
     this.isReady = true;
     if (this.loader) this.loader.classList.add("hidden");
 
@@ -157,6 +180,8 @@ class PaduraPlayer {
   }
 
   onPlayerStateChange(event) {
+    if (this.isDestroyed || !window.YT || !window.YT.PlayerState) return;
+
     switch (event.data) {
       case window.YT.PlayerState.PLAYING:
         this.isPlaying = true;
@@ -192,13 +217,15 @@ class PaduraPlayer {
         break;
     }
 
-    if (this.onStateChangeCallback) {
+    if (typeof this.onStateChangeCallback === "function") {
       this.onStateChangeCallback(event.data);
     }
   }
 
   onPlayerError(event) {
+    if (this.isDestroyed) return;
     if (this.loader) this.loader.classList.add("hidden");
+
     let title = "Playback Error";
     let desc = "Unable to load stream.";
 
@@ -225,46 +252,44 @@ class PaduraPlayer {
   }
 
   setupEventListeners() {
-    if (this.playBtn) {
-      this.playBtn.addEventListener("click", () => this.togglePlay());
-    }
-    if (this.centerPlayBtn) {
-      this.centerPlayBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.togglePlay();
-      });
-    }
+    // Play / Pause controls
+    this.addListener(this.playBtn, "click", () => this.togglePlay());
 
-    if (this.clickShield) {
-      this.clickShield.addEventListener("click", (e) => {
-        if (e.target.closest(".center-play-overlay, .player-controls-bar, .player-title-bar")) {
-          return;
-        }
-        this.handleMouseMove();
-        this.togglePlay();
-      });
-    }
+    this.addListener(this.centerPlayBtn, "click", (e) => {
+      e.stopPropagation();
+      this.togglePlay();
+    });
 
-    if (this.seekBackBtn) {
-      this.seekBackBtn.addEventListener("click", () => this.seekRelative(-10));
-    }
-    if (this.seekFwdBtn) {
-      this.seekFwdBtn.addEventListener("click", () => this.seekRelative(10));
-    }
+    // Clicking anywhere in the middle of the player toggles both play and pause
+    this.addListener(this.clickShield, "click", (e) => {
+      if (
+        e.target &&
+        typeof e.target.closest === "function" &&
+        e.target.closest(".center-play-overlay, .player-controls-bar, .player-title-bar")
+      ) {
+        return;
+      }
+      this.handleMouseMove();
+      this.togglePlay();
+    });
 
-    if (this.liveSyncBtn) {
-      this.liveSyncBtn.addEventListener("click", () => this.syncToLive());
-    }
+    // Seek buttons (-10s / +10s)
+    this.addListener(this.seekBackBtn, "click", () => this.seekRelative(-10));
+    this.addListener(this.seekFwdBtn, "click", () => this.seekRelative(10));
 
-    // Timeline Scrubber (click + drag on desktop & touch)
+    // Jump to Live Edge button
+    this.addListener(this.liveSyncBtn, "click", () => this.syncToLive());
+
+    // Timeline Scrubber (click + drag on mouse and touch)
     if (this.timelineWrapper) {
-      this.timelineWrapper.addEventListener("mousedown", (e) => {
+      this.addListener(this.timelineWrapper, "mousedown", (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
         this.handleDragStart(e.clientX);
       });
 
-      this.timelineWrapper.addEventListener(
+      this.addListener(
+        this.timelineWrapper,
         "touchstart",
         (e) => {
           if (!e.touches || !e.touches[0]) return;
@@ -274,43 +299,41 @@ class PaduraPlayer {
         { passive: false }
       );
 
-      window.addEventListener("mousemove", this._onDragMove);
-      window.addEventListener("mouseup", this._onDragEnd);
-      window.addEventListener("touchmove", this._onDragMove, { passive: false });
-      window.addEventListener("touchend", this._onDragEnd);
-      window.addEventListener("touchcancel", this._onDragEnd);
+      this.addListener(window, "mousemove", (e) => this.handleDragMove(e));
+      this.addListener(window, "mouseup", (e) => this.handleDragEnd(e));
+      this.addListener(window, "touchmove", (e) => this.handleDragMove(e), { passive: false });
+      this.addListener(window, "touchend", (e) => this.handleDragEnd(e));
+      this.addListener(window, "touchcancel", (e) => this.handleDragEnd(e));
     }
 
-    if (this.volumeBtn) {
-      this.volumeBtn.addEventListener("click", () => this.toggleMute());
-    }
-    if (this.volumeSlider) {
-      this.volumeSlider.addEventListener("input", (e) => {
-        const val = parseInt(e.target.value, 10);
-        this.setVolume(val);
-      });
-    }
+    // Volume & Mute
+    this.addListener(this.volumeBtn, "click", () => this.toggleMute());
+    this.addListener(this.volumeSlider, "input", (e) => {
+      const val = parseInt(e.target.value, 10);
+      if (!isNaN(val)) this.setVolume(val);
+    });
 
+    // Speed Selector
     if (this.speedBtn && this.speedDropdown) {
-      this.speedBtn.addEventListener("click", (e) => {
+      this.addListener(this.speedBtn, "click", (e) => {
         e.stopPropagation();
         this.speedDropdown.classList.toggle("open");
       });
-      document.addEventListener("click", this._onDocClick);
-    }
-
-    if (this.fullscreenBtn) {
-      this.fullscreenBtn.addEventListener("click", () => this.toggleFullscreen());
-    }
-
-    if (this.wrapper) {
-      this.wrapper.addEventListener("mousemove", () => this.handleMouseMove());
-      this.wrapper.addEventListener("mouseleave", () => {
-        if (this.isPlaying && !this.isDragging) {
-          this.wrapper.classList.remove("controls-visible");
-        }
+      this.addListener(document, "click", () => {
+        this.speedDropdown.classList.remove("open");
       });
     }
+
+    // Fullscreen Toggle
+    this.addListener(this.fullscreenBtn, "click", () => this.toggleFullscreen());
+
+    // Controls auto-hide on mouse movement
+    this.addListener(this.wrapper, "mousemove", () => this.handleMouseMove());
+    this.addListener(this.wrapper, "mouseleave", () => {
+      if (this.isPlaying && !this.isDragging && this.wrapper) {
+        this.wrapper.classList.remove("controls-visible");
+      }
+    });
   }
 
   getClientX(e) {
@@ -321,6 +344,8 @@ class PaduraPlayer {
 
   getSeekFromClientX(clientX) {
     const targetEl = this.timelineTrack || this.timelineWrapper;
+    if (!targetEl) return { percentage: 0, targetTime: 0 };
+
     const rect = targetEl.getBoundingClientRect();
     if (!rect.width || this.duration <= 0) {
       return { percentage: 0, targetTime: 0 };
@@ -343,12 +368,17 @@ class PaduraPlayer {
     const liveLabel = this.liveSyncBtn ? this.liveSyncBtn.querySelector(".live-label") : null;
 
     if (this.liveSyncBtn) {
-      if (isAtLiveEdge) {
-        this.liveSyncBtn.classList.add("is-live");
-        if (liveLabel) liveLabel.textContent = "LIVE";
+      if (!this.isLiveStream) {
+        this.liveSyncBtn.style.display = "none";
       } else {
-        this.liveSyncBtn.classList.remove("is-live");
-        if (liveLabel) liveLabel.textContent = `-${this.formatTime(diffFromLive)}`;
+        this.liveSyncBtn.style.display = "";
+        if (isAtLiveEdge) {
+          this.liveSyncBtn.classList.add("is-live");
+          if (liveLabel) liveLabel.textContent = "LIVE";
+        } else {
+          this.liveSyncBtn.classList.remove("is-live");
+          if (liveLabel) liveLabel.textContent = `-${this.formatTime(diffFromLive)}`;
+        }
       }
     }
 
@@ -358,6 +388,9 @@ class PaduraPlayer {
   }
 
   performSeek(targetTime) {
+    if (!this.isReady || !this.ytPlayer || this.duration <= 0) return;
+
+    this.userHasSeeked = true;
     const clamped = Math.max(0, Math.min(this.duration, targetTime));
     this.pendingSeekTarget = clamped;
     this.seekLockUntil = Date.now() + 1200;
@@ -369,6 +402,7 @@ class PaduraPlayer {
     if (!this.isReady || !this.ytPlayer || !this.dvrAvailable || this.duration <= 0) return;
     this.isDragging = true;
     if (this.wrapper) this.wrapper.classList.add("is-dragging");
+
     const pos = this.getSeekFromClientX(clientX);
     this.dragTargetTime = pos.targetTime;
     this.updateTimelineVisuals(pos.targetTime, this.duration);
@@ -377,8 +411,10 @@ class PaduraPlayer {
   handleDragMove(e) {
     if (!this.isDragging) return;
     if (e.cancelable) e.preventDefault();
+
     const clientX = this.getClientX(e);
     if (clientX === null) return;
+
     const pos = this.getSeekFromClientX(clientX);
     this.dragTargetTime = pos.targetTime;
     this.updateTimelineVisuals(pos.targetTime, this.duration);
@@ -402,7 +438,7 @@ class PaduraPlayer {
     clearTimeout(this.controlsFadeTimer);
     if (this.isPlaying && !this.isDragging) {
       this.controlsFadeTimer = setTimeout(() => {
-        if (!this.isDragging) {
+        if (!this.isDragging && this.wrapper) {
           this.wrapper.classList.remove("controls-visible");
         }
       }, 3500);
@@ -411,12 +447,15 @@ class PaduraPlayer {
 
   togglePlay() {
     if (!this.isReady || !this.ytPlayer) return;
+
     const state =
       typeof this.ytPlayer.getPlayerState === "function"
         ? this.ytPlayer.getPlayerState()
         : null;
+    const ytPlaying =
+      window.YT && window.YT.PlayerState && state === window.YT.PlayerState.PLAYING;
 
-    if (this.isPlaying || state === window.YT.PlayerState.PLAYING) {
+    if (this.isPlaying || ytPlaying) {
       this.ytPlayer.pauseVideo();
     } else {
       this.ytPlayer.playVideo();
@@ -440,18 +479,21 @@ class PaduraPlayer {
   seekRelative(seconds) {
     if (!this.isReady || !this.ytPlayer || !this.dvrAvailable) return;
     const baseTime =
-      this.pendingSeekTarget !== null ? this.pendingSeekTarget : this.ytPlayer.getCurrentTime() || 0;
+      this.pendingSeekTarget !== null
+        ? this.pendingSeekTarget
+        : this.ytPlayer.getCurrentTime() || 0;
     this.performSeek(baseTime + seconds);
   }
 
   syncToLive() {
     if (!this.isReady || !this.ytPlayer) return;
+
     const rawDur = this.ytPlayer.getDuration() || 0;
     const liveTarget = Math.max(rawDur, this.liveEdge, this.duration);
 
     if (liveTarget > 0) {
-      // Overshoot slightly on live streams so YouTube snaps to the true live head
       const seekTarget = this.isLiveStream ? liveTarget + 60 : liveTarget;
+      this.userHasSeeked = true;
       this.pendingSeekTarget = null;
       this.seekLockUntil = Date.now() + 800;
       this.updateTimelineVisuals(liveTarget, liveTarget);
@@ -478,8 +520,9 @@ class PaduraPlayer {
     if (this.isMuted) {
       this.ytPlayer.unMute();
       this.isMuted = false;
-      this.ytPlayer.setVolume(this.volume || 80);
-      if (this.volumeSlider) this.volumeSlider.value = this.volume || 80;
+      const restored = this.volume || 80;
+      this.ytPlayer.setVolume(restored);
+      if (this.volumeSlider) this.volumeSlider.value = restored;
       this.updateVolumeUI(false);
     } else {
       this.ytPlayer.mute();
@@ -505,11 +548,15 @@ class PaduraPlayer {
 
   updateSpeedOptions() {
     if (!this.ytPlayer || !this.speedMenu) return;
-    const rates = this.ytPlayer.getAvailablePlaybackRates() || [0.5, 0.75, 1, 1.25, 1.5, 2];
+    const rates =
+      (typeof this.ytPlayer.getAvailablePlaybackRates === "function" &&
+        this.ytPlayer.getAvailablePlaybackRates()) || [0.5, 0.75, 1, 1.25, 1.5, 2];
+
     this.speedMenu.innerHTML = "";
 
     rates.forEach((rate) => {
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.className = `speed-option ${rate === this.currentSpeed ? "active" : ""}`;
       btn.textContent = `${rate}x`;
       btn.addEventListener("click", () => {
@@ -522,7 +569,7 @@ class PaduraPlayer {
 
   setSpeed(rate) {
     this.currentSpeed = rate;
-    if (this.ytPlayer) {
+    if (this.ytPlayer && typeof this.ytPlayer.setPlaybackRate === "function") {
       this.ytPlayer.setPlaybackRate(rate);
     }
     const speedSpan = this.speedBtn ? this.speedBtn.querySelector("span") : null;
@@ -534,7 +581,7 @@ class PaduraPlayer {
 
   toggleFullscreen() {
     if (!this.wrapper) return;
-    if (!document.fullscreenElement) {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
       if (this.wrapper.requestFullscreen) {
         this.wrapper.requestFullscreen();
       } else if (this.wrapper.webkitRequestFullscreen) {
@@ -543,16 +590,28 @@ class PaduraPlayer {
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
       }
     }
   }
 
+  /**
+   * Continuous loop syncing timeline, duration, and live edge status
+   */
   startTimeLoop() {
     clearInterval(this.timelineInterval);
     this.lastLoopTime = Date.now();
 
     this.timelineInterval = setInterval(() => {
-      if (!this.isReady || !this.ytPlayer) return;
+      if (
+        this.isDestroyed ||
+        !this.isReady ||
+        !this.ytPlayer ||
+        typeof this.ytPlayer.getCurrentTime !== "function"
+      ) {
+        return;
+      }
 
       const now = Date.now();
       const dt = Math.max(0, (now - this.lastLoopTime) / 1000);
@@ -565,25 +624,29 @@ class PaduraPlayer {
         const videoData =
           typeof this.ytPlayer.getVideoData === "function" ? this.ytPlayer.getVideoData() : null;
 
-        // Detect live stream via API flag or growing duration
+        // Detect live stream: 0 duration while playing (no DVR) or growing duration (DVR)
+        if (rawDur === 0 && this.isPlaying) {
+          this.isLiveStream = true;
+        }
         if (this.initialDuration === 0 && rawDur > 0) {
           this.initialDuration = rawDur;
         }
         if (
-          (videoData && videoData.isLive) ||
-          (this.initialDuration > 0 && rawDur > this.initialDuration + 1)
+          (videoData && videoData.isLive === true) ||
+          (this.initialDuration > 0 && rawDur > this.initialDuration + 1.5)
         ) {
           this.isLiveStream = true;
         }
 
-        // Keep live edge synced in real time even when YouTube's getDuration() lags
+        // Keep duration synced without letting liveEdge drift far ahead of YouTube
         let effectiveDuration = rawDur;
         if (this.isLiveStream) {
-          if (this.liveEdge > 0) {
-            this.liveEdge += dt;
+          if (rawDur > 0) {
+            const nextEdge =
+              this.liveEdge > 0 ? this.liveEdge + (this.isPlaying ? dt : 0) : Math.max(rawDur, cur);
+            this.liveEdge = Math.min(Math.max(nextEdge, rawDur, cur), rawDur + 5);
+            effectiveDuration = this.liveEdge;
           }
-          this.liveEdge = Math.max(this.liveEdge, rawDur, cur);
-          effectiveDuration = this.liveEdge;
         } else if (cur > rawDur && rawDur > 0) {
           effectiveDuration = cur;
         }
@@ -592,11 +655,27 @@ class PaduraPlayer {
         this.duration = effectiveDuration;
         this.dvrAvailable = effectiveDuration > 0 && isFinite(effectiveDuration);
 
+        // If joining an active DVR livestream at 00:00, auto-snap to live edge once
+        if (
+          this.isLiveStream &&
+          this.isPlaying &&
+          !this.hasInitialLiveSynced &&
+          !this.userHasSeeked &&
+          effectiveDuration > 30 &&
+          effectiveDuration - cur > 30
+        ) {
+          this.hasInitialLiveSynced = true;
+          this.seekLockUntil = now + 800;
+          this.updateTimelineVisuals(effectiveDuration, effectiveDuration);
+          this.ytPlayer.seekTo(effectiveDuration, true);
+          return;
+        }
+
         if (this.bufferBar) {
           this.bufferBar.style.width = `${Math.min(100, Math.max(0, loadedFraction * 100))}%`;
         }
 
-        // Unlock seek as soon as YouTube actually moves to the target keyframe
+        // Unlock seek lock as soon as YouTube reaches the sought keyframe
         if (this.pendingSeekTarget !== null) {
           if (Math.abs(cur - this.pendingSeekTarget) <= 4 || now >= this.seekLockUntil) {
             this.pendingSeekTarget = null;
@@ -615,6 +694,7 @@ class PaduraPlayer {
           if (this.playedBar) this.playedBar.style.width = "100%";
           if (this.seekerHandle) this.seekerHandle.style.left = "100%";
           if (this.liveSyncBtn) {
+            this.liveSyncBtn.style.display = "";
             this.liveSyncBtn.classList.add("is-live");
             if (liveLabel) liveLabel.textContent = "LIVE";
           }
@@ -625,7 +705,7 @@ class PaduraPlayer {
           if (this.seekFwdBtn) this.seekFwdBtn.disabled = true;
         }
       } catch (err) {
-        // Player may be destroyed
+        // Player may be torn down mid-tick
       }
     }, 200);
   }
@@ -642,14 +722,23 @@ class PaduraPlayer {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   }
 
+  escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   showOverlayMessage(title, description) {
     if (!this.messageOverlay) return;
     this.messageOverlay.innerHTML = `
       <svg width="60" height="60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
       </svg>
-      <h3>${title}</h3>
-      <p>${description}</p>
+      <h3>${this.escapeHtml(title)}</h3>
+      <p>${this.escapeHtml(description)}</p>
     `;
     this.messageOverlay.classList.remove("hidden");
   }
@@ -661,25 +750,25 @@ class PaduraPlayer {
   }
 
   destroy() {
+    this.isDestroyed = true;
     clearInterval(this.timelineInterval);
     clearTimeout(this.controlsFadeTimer);
     this.isDragging = false;
     this.pendingSeekTarget = null;
     if (this.wrapper) this.wrapper.classList.remove("is-dragging");
 
-    window.removeEventListener("mousemove", this._onDragMove);
-    window.removeEventListener("mouseup", this._onDragEnd);
-    window.removeEventListener("touchmove", this._onDragMove);
-    window.removeEventListener("touchend", this._onDragEnd);
-    window.removeEventListener("touchcancel", this._onDragEnd);
-    document.removeEventListener("click", this._onDocClick);
+    this._listeners.forEach(({ target, type, handler, options }) => {
+      target.removeEventListener(type, handler, options);
+    });
+    this._listeners = [];
 
     if (window.PaduraSecurity) {
       window.PaduraSecurity.stopViewingHeartbeat();
     }
-    if (this.ytPlayer && this.ytPlayer.destroy) {
+    if (this.ytPlayer && typeof this.ytPlayer.destroy === "function") {
       this.ytPlayer.destroy();
     }
+    this.ytPlayer = null;
   }
 }
 
