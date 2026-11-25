@@ -151,7 +151,7 @@
       <!-- Mini Padura Event Banner Showcase -->
       <div class="auth-banner-thumb">
         <img src="assets/images/padura-banner.jpg" alt="Padura Concert Banner">
-        <div class="auth-banner-badge">පදුර • LIVE ON-AIR</div>
+        <div class="auth-banner-badge">පැදුර • LIVE ON-AIR</div>
       </div>
 
       <div class="auth-brand">
@@ -179,10 +179,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </span>
-            <input type="text" id="login-identifier" class="form-input" placeholder="e.g. PS/2023/174 or username" required autofocus autocomplete="username">
-          </div>
-          <div style="font-size: 0.725rem; color: var(--text-dim); margin-top: 0.35rem;" id="identifier-hint">
-            Students can enter registration number (e.g. PS/2023/174) or assigned username.
+            <input type="text" id="login-identifier" class="form-input" placeholder="e.g. PS/2023/XXX or username" required autofocus autocomplete="username">
           </div>
         </div>
 
@@ -220,7 +217,7 @@
     </div>
   </div>
 
-  <!-- Supabase Credentials Configuration Modal -->
+  <!-- Supabase Credentials Configuration Modal
   <div class="modal-backdrop" id="modal-config">
     <div class="modal-content">
       <div class="modal-header">
@@ -245,7 +242,7 @@
         <button class="btn btn-primary" id="btn-save-config">Save Credentials</button>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -266,16 +263,14 @@
 
         if (role === "student") {
           labelIdentifier.innerHTML = `Student Number or Username <span class="required">*</span>`;
-          identifierInput.placeholder = "e.g. PS/2023/174 or username";
-          hintEl.textContent = "Students can enter registration number (e.g. PS/2023/174) or assigned username.";
+          identifierInput.placeholder = "e.g. PS/2023/XXX or username";
         } else if (role === "parent") {
           labelIdentifier.innerHTML = `Parent Username or Email <span class="required">*</span>`;
           identifierInput.placeholder = "e.g. parent_username or email";
-          hintEl.textContent = "Parents should use the username created by university administration.";
+          hintEl.textContent = "Parents should use the username created by web administration.";
         } else if (role === "admin") {
           labelIdentifier.innerHTML = `Administrator Username <span class="required">*</span>`;
           identifierInput.placeholder = "e.g. padura_admin or admin email";
-          hintEl.textContent = "Secure administrative access credentials.";
         }
       });
     });
