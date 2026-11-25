@@ -237,7 +237,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 5;
+  z-index: 12;
   background: linear-gradient(0deg, rgba(11, 17, 32, 0.95) 0%, rgba(11, 17, 32, 0.7) 60%, rgba(11, 17, 32, 0) 100%);
   padding: 1.5rem 1.25rem 0.85rem;
   display: flex;
@@ -248,7 +248,8 @@
 }
 
 .video-player-wrapper:hover .player-controls-bar,
-.video-player-wrapper.controls-visible .player-controls-bar {
+.video-player-wrapper.controls-visible .player-controls-bar,
+.video-player-wrapper.is-dragging .player-controls-bar {
   opacity: 1;
 }
 
@@ -256,10 +257,13 @@
 .player-timeline-wrapper {
   position: relative;
   width: 100%;
-  height: 18px;
+  height: 24px;
   display: flex;
   align-items: center;
   cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .player-timeline-track {
@@ -271,7 +275,8 @@
   transition: height 0.15s ease;
 }
 
-.player-timeline-wrapper:hover .player-timeline-track {
+.player-timeline-wrapper:hover .player-timeline-track,
+.video-player-wrapper.is-dragging .player-timeline-track {
   height: 7px;
 }
 
@@ -299,10 +304,11 @@
 
 .player-seeker-handle {
   position: absolute;
+  left: 0%;
   top: 50%;
   transform: translate(-50%, -50%) scale(0);
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: #FFFFFF;
   box-shadow: 0 0 10px rgba(124, 58, 237, 0.8);
@@ -310,8 +316,16 @@
   transition: transform 0.15s ease;
 }
 
-.player-timeline-wrapper:hover .player-seeker-handle {
+.player-timeline-wrapper:hover .player-seeker-handle,
+.video-player-wrapper.is-dragging .player-seeker-handle {
   transform: translate(-50%, -50%) scale(1);
+}
+
+/* Always show the slider knob on touchscreens (no hover) */
+@media (hover: none) {
+  .player-seeker-handle {
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 /* Controls Row */
@@ -340,9 +354,14 @@
   transition: var(--transition);
 }
 
-.control-btn:hover {
+.control-btn:hover:not(:disabled) {
   color: #A78BFA;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.control-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .control-btn svg {
