@@ -52,6 +52,10 @@ class PaduraPlayer {
 
   bindDomElements() {
     this.wrapper = document.getElementById(this.wrapperId);
+    this.wrapper = document.getElementById(this.wrapperId);
+    this.clickShield =
+      document.getElementById("player-click-shield") ||
+      (this.wrapper ? this.wrapper.querySelector(".player-click-shield") : null);
     this.playBtn = document.getElementById("player-play-btn");
     this.centerPlayBtn = document.getElementById("center-play-overlay");
     this.playIcon = document.getElementById("play-icon");
@@ -225,7 +229,20 @@ class PaduraPlayer {
       this.playBtn.addEventListener("click", () => this.togglePlay());
     }
     if (this.centerPlayBtn) {
-      this.centerPlayBtn.addEventListener("click", () => this.togglePlay());
+      this.centerPlayBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.togglePlay();
+      });
+    }
+
+    if (this.clickShield) {
+      this.clickShield.addEventListener("click", (e) => {
+        if (e.target.closest(".center-play-overlay, .player-controls-bar, .player-title-bar")) {
+          return;
+        }
+        this.handleMouseMove();
+        this.togglePlay();
+      });
     }
 
     if (this.seekBackBtn) {
@@ -394,7 +411,12 @@ class PaduraPlayer {
 
   togglePlay() {
     if (!this.isReady || !this.ytPlayer) return;
-    if (this.isPlaying) {
+    const state =
+      typeof this.ytPlayer.getPlayerState === "function"
+        ? this.ytPlayer.getPlayerState()
+        : null;
+
+    if (this.isPlaying || state === window.YT.PlayerState.PLAYING) {
       this.ytPlayer.pauseVideo();
     } else {
       this.ytPlayer.playVideo();
