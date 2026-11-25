@@ -22,6 +22,7 @@ class PaduraPlayer {
     this.currentSpeed = 1;
 
     this.isLiveStream = options.isLive === true;
+    this.loopNonLive = options.loopNonLive !== false;
     this.hasInitialLiveSynced = false;
     this.userHasSeeked = false;
     this.dvrAvailable = false;
@@ -192,9 +193,23 @@ class PaduraPlayer {
         }
         break;
 
-      case window.YT.PlayerState.PAUSED:
+      case window.YT.PlayerState.ENDED:
+        if (!this.isLiveStream && this.loopNonLive) {
+          this.hideOverlayMessage();
+          this.pendingSeekTarget = 0;
+          this.seekLockUntil = Date.now() + 800;
+          this.updateTimelineVisuals(0, this.duration);
+          this.ytPlayer.seekTo(0, true);
+          this.ytPlayer.playVideo();
+          break;
+        }
+
         this.isPlaying = false;
         this.setPlayStateUI(false);
+        this.showOverlayMessage(
+          "Live Stream Concluded",
+          "The live event has ended. Thank you for watching Padura Live."
+        );
         if (window.PaduraSecurity) {
           window.PaduraSecurity.stopViewingHeartbeat();
         }
@@ -681,6 +696,24 @@ class PaduraPlayer {
             this.pendingSeekTarget = null;
             this.seekLockUntil = 0;
           }
+        }
+
+        // Loop non-live videos just before the end so YouTube's end-screen never flashes
+        if (
+          !this.isLiveStream &&
+          this.loopNonLive &&
+          this.isPlaying &&
+          !this.isDragging &&
+          now >= this.seekLockUntil &&
+          effectiveDuration > 2 &&
+          cur >= effectiveDuration - 0.5
+        ) {
+          this.pendingSeekTarget = 0;
+          this.seekLockUntil = now + 1000;
+          this.updateTimelineVisuals(0, effectiveDuration);
+          this.ytPlayer.seekTo(0, true);
+          this.ytPlayer.playVideo();
+          return;
         }
 
         if (this.isDragging || now < this.seekLockUntil) return;
