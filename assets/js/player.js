@@ -1,7 +1,7 @@
 /**
  * PADURA LIVE - CUSTOM YOUTUBE IFRAME LIVE PLAYER CONTROLLER
  * Integrates YouTube IFrame Player API with custom controls,
- * DVR timeline management, speed selection, volume, and fullscreen.
+ * click & drag DVR timeline scrubbing, speed selection, volume, and fullscreen.
  */
 
 class PaduraPlayer {
@@ -22,15 +22,23 @@ class PaduraPlayer {
     this.dvrAvailable = false;
     this.duration = 0;
     this.currentTime = 0;
+
+    this.isDragging = false;
+    this.dragTargetTime = 0;
+    this.seekLockUntil = 0;
+
     this.timelineInterval = null;
     this.controlsFadeTimer = null;
+
+    this._onDragMove = this.handleDragMove.bind(this);
+    this._onDragEnd = this.handleDragEnd.bind(this);
+    this._onDocClick = () => {
+      if (this.speedDropdown) this.speedDropdown.classList.remove("open");
+    };
 
     this.init();
   }
 
-  /**
-   * Load YouTube API and initialize player
-   */
   init() {
     this.bindDomElements();
     this.loadYouTubeIframeAPI();
@@ -71,7 +79,6 @@ class PaduraPlayer {
     if (window.YT && window.YT.Player) {
       this.createPlayer();
     } else {
-      // Check if tag already exists
       let tag = document.querySelector('script[src*="youtube.com/iframe_api"]');
       if (!tag) {
         tag = document.createElement("script");
@@ -80,7 +87,6 @@ class PaduraPlayer {
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
       }
 
-      // Store callback
       const existingCallback = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
         if (existingCallback) existingCallback();
@@ -95,20 +101,19 @@ class PaduraPlayer {
       return;
     }
 
-    // Hide any previous overlay
     this.hideOverlayMessage();
 
     this.ytPlayer = new window.YT.Player(this.mountId, {
       videoId: this.videoId,
       playerVars: {
         autoplay: 1,
-        controls: 0,          // Disable default YouTube controls
-        disablekb: 1,         // Disable default keyboard shortcuts
-        enablejsapi: 1,       // Enable JS API controls
-        fs: 0,                // Disable default fullscreen button
-        iv_load_policy: 3,    // Hide annotations
-        modestbranding: 1,    // Remove YouTube logo
-        rel: 0,               // Disable related videos
+        controls: 0,
+        disablekb: 1,
+        enablejsapi: 1,
+        fs: 0,
+        iv_load_policy: 3,
+        modestbranding: 1,
+        rel: 0,
         playsinline: 1,
         origin: window.location.origin,
       },
@@ -124,16 +129,10 @@ class PaduraPlayer {
     this.isReady = true;
     if (this.loader) this.loader.classList.add("hidden");
 
-    // Populate supported playback rates
     this.updateSpeedOptions();
-
-    // Set initial volume
     this.ytPlayer.setVolume(this.volume);
-
-    // Start timeline watcher loop
     this.startTimeLoop();
 
-    // Attempt autoplay (muted first if browser blocks unmuted audio)
     try {
       this.ytPlayer.playVideo();
     } catch (e) {
@@ -142,7 +141,6 @@ class PaduraPlayer {
   }
 
   onPlayerStateChange(event) {
-    // YT.PlayerState: UNSTARTED (-1), ENDED (0), PLAYING (1), PAUSED (2), BUFFERING (3), CUED (5)
     switch (event.data) {
       case window.YT.PlayerState.PLAYING:
         this.isPlaying = true;
@@ -207,7 +205,6 @@ class PaduraPlayer {
   }
 
   setupEventListeners() {
-    // Play/Pause button
     if (this.playBtn) {
       this.playBtn.addEventListener("click", () => this.togglePlay());
     }
@@ -215,7 +212,6 @@ class PaduraPlayer {
       this.centerPlayBtn.addEventListener("click", () => this.togglePlay());
     }
 
-    // Seek buttons (-10s / +10s)
     if (this.seekBackBtn) {
       this.seekBackBtn.addEventListener("click", () => this.seekRelative(-10));
     }
@@ -223,17 +219,35 @@ class PaduraPlayer {
       this.seekFwdBtn.addEventListener("click", () => this.seekRelative(10));
     }
 
-    // Go to Live Edge button
     if (this.liveSyncBtn) {
       this.liveSyncBtn.addEventListener("click", () => this.syncToLive());
     }
 
-    // Timeline Scrubber
+    // Timeline Scrubber (supports click and drag on mouse & touch)
     if (this.timelineWrapper) {
-      this.timelineWrapper.addEventListener("click", (e) => this.handleTimelineClick(e));
+      this.timelineWrapper.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        this.handleDragStart(e.clientX);
+      });
+
+      this.timelineWrapper.addEventListener(
+        "touchstart",
+        (e) => {
+          if (!e.touches || !e.touches[0]) return;
+          if (e.cancelable) e.preventDefault();
+          this.handleDragStart(e.touches[0].clientX);
+        },
+        { passive: false }
+      );
+
+      window.addEventListener("mousemove", this._onDragMove);
+      window.addEventListener("mouseup", this._onDragEnd);
+      window.addEventListener("touchmove", this._onDragMove, { passive: false });
+      window.addEventListener("touchend", this._onDragEnd);
+      window.addEventListener("touchcancel", this._onDragEnd);
     }
 
-    // Volume Slider & Mute
     if (this.volumeBtn) {
       this.volumeBtn.addEventListener("click", () => this.toggleMute());
     }
@@ -244,40 +258,112 @@ class PaduraPlayer {
       });
     }
 
-    // Speed Selector
     if (this.speedBtn && this.speedDropdown) {
       this.speedBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         this.speedDropdown.classList.toggle("open");
       });
-      document.addEventListener("click", () => {
-        this.speedDropdown.classList.remove("open");
-      });
+      document.addEventListener("click", this._onDocClick);
     }
 
-    // Fullscreen Toggle
     if (this.fullscreenBtn) {
       this.fullscreenBtn.addEventListener("click", () => this.toggleFullscreen());
     }
 
-    // Controls visibility on mouse movement
     if (this.wrapper) {
       this.wrapper.addEventListener("mousemove", () => this.handleMouseMove());
       this.wrapper.addEventListener("mouseleave", () => {
-        if (this.isPlaying) {
+        if (this.isPlaying && !this.isDragging) {
           this.wrapper.classList.remove("controls-visible");
         }
       });
     }
   }
 
+  getClientX(e) {
+    if (e.touches && e.touches[0]) return e.touches[0].clientX;
+    if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientX;
+    return typeof e.clientX === "number" ? e.clientX : null;
+  }
+
+  getSeekFromClientX(clientX) {
+    const rect = this.timelineWrapper.getBoundingClientRect();
+    if (!rect.width || this.duration <= 0) {
+      return { percentage: 0, targetTime: 0 };
+    }
+    const offsetX = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, offsetX / rect.width));
+    return { percentage, targetTime: percentage * this.duration };
+  }
+
+  updateTimelineVisuals(targetTime, duration) {
+    const safeDur = duration > 0 ? duration : 1;
+    const progressPct = Math.min(100, Math.max(0, (targetTime / safeDur) * 100));
+
+    if (this.playedBar) this.playedBar.style.width = `${progressPct}%`;
+    if (this.seekerHandle) this.seekerHandle.style.left = `${progressPct}%`;
+
+    const diffFromLive = Math.max(0, duration - targetTime);
+    const isAtLiveEdge = diffFromLive <= 15;
+    const liveLabel = this.liveSyncBtn ? this.liveSyncBtn.querySelector(".live-label") : null;
+
+    if (this.liveSyncBtn) {
+      if (isAtLiveEdge) {
+        this.liveSyncBtn.classList.add("is-live");
+        if (liveLabel) liveLabel.textContent = "LIVE";
+      } else {
+        this.liveSyncBtn.classList.remove("is-live");
+        if (liveLabel) liveLabel.textContent = `-${this.formatTime(diffFromLive)}`;
+      }
+    }
+
+    if (this.timeDisplay) {
+      this.timeDisplay.textContent = `${this.formatTime(targetTime)} / ${this.formatTime(duration)}`;
+    }
+  }
+
+  handleDragStart(clientX) {
+    if (!this.isReady || !this.ytPlayer || !this.dvrAvailable || this.duration <= 0) return;
+    this.isDragging = true;
+    if (this.wrapper) this.wrapper.classList.add("is-dragging");
+    const pos = this.getSeekFromClientX(clientX);
+    this.dragTargetTime = pos.targetTime;
+    this.updateTimelineVisuals(pos.targetTime, this.duration);
+  }
+
+  handleDragMove(e) {
+    if (!this.isDragging) return;
+    if (e.cancelable) e.preventDefault();
+    const clientX = this.getClientX(e);
+    if (clientX === null) return;
+    const pos = this.getSeekFromClientX(clientX);
+    this.dragTargetTime = pos.targetTime;
+    this.updateTimelineVisuals(pos.targetTime, this.duration);
+  }
+
+  handleDragEnd(e) {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    if (this.wrapper) this.wrapper.classList.remove("is-dragging");
+
+    const clientX = this.getClientX(e);
+    const targetTime =
+      clientX !== null ? this.getSeekFromClientX(clientX).targetTime : this.dragTargetTime;
+
+    this.seekLockUntil = Date.now() + 1500;
+    this.updateTimelineVisuals(targetTime, this.duration);
+    this.ytPlayer.seekTo(targetTime, true);
+  }
+
   handleMouseMove() {
     if (!this.wrapper) return;
     this.wrapper.classList.add("controls-visible");
     clearTimeout(this.controlsFadeTimer);
-    if (this.isPlaying) {
+    if (this.isPlaying && !this.isDragging) {
       this.controlsFadeTimer = setTimeout(() => {
-        this.wrapper.classList.remove("controls-visible");
+        if (!this.isDragging) {
+          this.wrapper.classList.remove("controls-visible");
+        }
       }, 3500);
     }
   }
@@ -307,25 +393,21 @@ class PaduraPlayer {
 
   seekRelative(seconds) {
     if (!this.isReady || !this.ytPlayer || !this.dvrAvailable) return;
-    const curr = this.ytPlayer.getCurrentTime();
-    this.ytPlayer.seekTo(Math.max(0, curr + seconds), true);
+    const curr = this.ytPlayer.getCurrentTime() || 0;
+    const target = Math.max(0, Math.min(this.duration, curr + seconds));
+    this.seekLockUntil = Date.now() + 1500;
+    this.updateTimelineVisuals(target, this.duration);
+    this.ytPlayer.seekTo(target, true);
   }
 
   syncToLive() {
     if (!this.isReady || !this.ytPlayer) return;
     if (this.duration > 0) {
+      this.seekLockUntil = Date.now() + 1000;
+      this.updateTimelineVisuals(this.duration, this.duration);
       this.ytPlayer.seekTo(this.duration, true);
     }
     this.ytPlayer.playVideo();
-  }
-
-  handleTimelineClick(e) {
-    if (!this.isReady || !this.ytPlayer || !this.dvrAvailable || this.duration <= 0) return;
-    const rect = this.timelineWrapper.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
-    const targetTime = percentage * this.duration;
-    this.ytPlayer.seekTo(targetTime, true);
   }
 
   setVolume(val) {
@@ -382,7 +464,7 @@ class PaduraPlayer {
       btn.textContent = `${rate}x`;
       btn.addEventListener("click", () => {
         this.setSpeed(rate);
-        this.speedDropdown.classList.remove("open");
+        if (this.speedDropdown) this.speedDropdown.classList.remove("open");
       });
       this.speedMenu.appendChild(btn);
     });
@@ -393,8 +475,9 @@ class PaduraPlayer {
     if (this.ytPlayer) {
       this.ytPlayer.setPlaybackRate(rate);
     }
-    if (this.speedBtn) {
-      this.speedBtn.querySelector("span").textContent = `${rate}x`;
+    const speedSpan = this.speedBtn ? this.speedBtn.querySelector("span") : null;
+    if (speedSpan) {
+      speedSpan.textContent = `${rate}x`;
     }
     this.updateSpeedOptions();
   }
@@ -414,9 +497,6 @@ class PaduraPlayer {
     }
   }
 
-  /**
-   * Continuous loop checking player time, duration, and DVR status
-   */
   startTimeLoop() {
     clearInterval(this.timelineInterval);
     this.timelineInterval = setInterval(() => {
@@ -429,46 +509,26 @@ class PaduraPlayer {
 
         this.currentTime = cur;
         this.duration = dur;
-
-        // Detect DVR availability: Live streams with DVR provide a valid positive duration
         this.dvrAvailable = dur > 0 && isFinite(dur);
 
-        // Update Buffer bar
         if (this.bufferBar) {
           this.bufferBar.style.width = `${loadedFraction * 100}%`;
         }
 
+        // Pause bar updates while dragging or right after seeking
+        if (this.isDragging || Date.now() < this.seekLockUntil) return;
+
         if (this.dvrAvailable) {
-          const progressPct = Math.min(100, Math.max(0, (cur / dur) * 100));
-          if (this.playedBar) this.playedBar.style.width = `${progressPct}%`;
-          if (this.seekerHandle) this.seekerHandle.style.left = `${progressPct}%`;
-
-          // Check if viewer is at live edge (within 15s)
-          const diffFromLive = dur - cur;
-          const isAtLiveEdge = diffFromLive <= 15;
-
-          if (this.liveSyncBtn) {
-            if (isAtLiveEdge) {
-              this.liveSyncBtn.classList.add("is-live");
-              this.liveSyncBtn.querySelector(".live-label").textContent = "LIVE";
-            } else {
-              this.liveSyncBtn.classList.remove("is-live");
-              this.liveSyncBtn.querySelector(".live-label").textContent = `-${this.formatTime(diffFromLive)}`;
-            }
-          }
-
-          if (this.timeDisplay) {
-            this.timeDisplay.textContent = `${this.formatTime(cur)} / ${this.formatTime(dur)}`;
-          }
-
+          this.updateTimelineVisuals(cur, dur);
           if (this.seekBackBtn) this.seekBackBtn.disabled = false;
           if (this.seekFwdBtn) this.seekFwdBtn.disabled = false;
         } else {
-          // Standard live stream without seekable DVR
+          const liveLabel = this.liveSyncBtn ? this.liveSyncBtn.querySelector(".live-label") : null;
           if (this.playedBar) this.playedBar.style.width = "100%";
+          if (this.seekerHandle) this.seekerHandle.style.left = "100%";
           if (this.liveSyncBtn) {
             this.liveSyncBtn.classList.add("is-live");
-            this.liveSyncBtn.querySelector(".live-label").textContent = "LIVE";
+            if (liveLabel) liveLabel.textContent = "LIVE";
           }
           if (this.timeDisplay) {
             this.timeDisplay.textContent = "LIVE";
@@ -485,8 +545,12 @@ class PaduraPlayer {
   formatTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "00:00";
     const sec = Math.floor(seconds);
-    const m = Math.floor(sec / 60);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
+    if (h > 0) {
+      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    }
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   }
 
@@ -510,6 +574,20 @@ class PaduraPlayer {
 
   destroy() {
     clearInterval(this.timelineInterval);
+    clearTimeout(this.controlsFadeTimer);
+    this.isDragging = false;
+    if (this.wrapper) this.wrapper.classList.remove("is-dragging");
+
+    window.removeEventListener("mousemove", this._onDragMove);
+    window.removeEventListener("mouseup", this._onDragEnd);
+    window.removeEventListener("touchmove", this._onDragMove);
+    window.removeEventListener("touchend", this._onDragEnd);
+    window.removeEventListener("touchcancel", this._onDragEnd);
+    document.removeEventListener("click", this._onDocClick);
+
+    if (window.PaduraSecurity) {
+      window.PaduraSecurity.stopViewingHeartbeat();
+    }
     if (this.ytPlayer && this.ytPlayer.destroy) {
       this.ytPlayer.destroy();
     }
