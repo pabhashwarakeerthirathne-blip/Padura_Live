@@ -1,7 +1,8 @@
 /**
  * PADURA LIVE - CUSTOM YOUTUBE IFRAME LIVE PLAYER CONTROLLER
  * Integrates YouTube IFrame Player API with custom controls,
- * synced click & drag DVR timeline scrubbing, speed selection, volume, and fullscreen.
+ * synced click & drag DVR timeline scrubbing, endless VOD looping,
+ * speed selection, volume, and fullscreen.
  */
 
 class PaduraPlayer {
@@ -36,6 +37,10 @@ class PaduraPlayer {
     this.dragTargetTime = 0;
     this.pendingSeekTarget = null;
     this.seekLockUntil = 0;
+
+    this.lastToggleTime = 0;
+    this.toggleGraceUntil = 0;
+    this.resumeFallbackTimer = null;
 
     this.timelineInterval = null;
     this.controlsFadeTimer = null;
@@ -185,6 +190,7 @@ class PaduraPlayer {
 
     switch (event.data) {
       case window.YT.PlayerState.PLAYING:
+        clearTimeout(this.resumeFallbackTimer);
         this.isPlaying = true;
         this.setPlayStateUI(true);
         if (this.loader) this.loader.classList.add("hidden");
@@ -193,7 +199,22 @@ class PaduraPlayer {
         }
         break;
 
+      case window.YT.PlayerState.PAUSED:
+      case window.YT.PlayerState.CUED:
+        this.isPlaying = false;
+        this.setPlayStateUI(false);
+        if (this.loader) this.loader.classList.add("hidden");
+        if (window.PaduraSecurity) {
+          window.PaduraSecurity.stopViewingHeartbeat();
+        }
+        break;
+
+      case window.YT.PlayerState.BUFFERING:
+        if (this.loader) this.loader.classList.remove("hidden");
+        break;
+
       case window.YT.PlayerState.ENDED:
+        clearTimeout(this.resumeFallbackTimer);
         if (!this.isLiveStream && this.loopNonLive) {
           this.hideOverlayMessage();
           this.pendingSeekTarget = 0;
@@ -206,22 +227,7 @@ class PaduraPlayer {
 
         this.isPlaying = false;
         this.setPlayStateUI(false);
-        this.showOverlayMessage(
-          "Live Stream Concluded",
-          "The live event has ended. Thank you for watching Padura Live."
-        );
-        if (window.PaduraSecurity) {
-          window.PaduraSecurity.stopViewingHeartbeat();
-        }
-        break;
-
-      case window.YT.PlayerState.BUFFERING:
-        if (this.loader) this.loader.classList.remove("hidden");
-        break;
-
-      case window.YT.PlayerState.ENDED:
-        this.isPlaying = false;
-        this.setPlayStateUI(false);
+        if (this.loader) this.loader.classList.add("hidden");
         this.showOverlayMessage(
           "Live Stream Concluded",
           "The live event has ended. Thank you for watching Padura Live."
@@ -267,9 +273,13 @@ class PaduraPlayer {
   }
 
   setupEventListeners() {
-    // Play / Pause controls
-    this.addListener(this.playBtn, "click", () => this.togglePlay());
+    // Play / Pause button in controls bar
+    this.addListener(this.playBtn, "click", (e) => {
+      e.stopPropagation();
+      this.togglePlay();
+    });
 
+    // Big center Play overlay button
     this.addListener(this.centerPlayBtn, "click", (e) => {
       e.stopPropagation();
       this.togglePlay();
@@ -463,18 +473,67 @@ class PaduraPlayer {
   togglePlay() {
     if (!this.isReady || !this.ytPlayer) return;
 
-    const state =
-      typeof this.ytPlayer.getPlayerState === "function"
-        ? this.ytPlayer.getPlayerState()
-        : null;
-    const ytPlaying =
-      window.YT && window.YT.PlayerState && state === window.YT.PlayerState.PLAYING;
+    // Prevent overlapping click handlers from toggling twice on a single click
+    const now = Date.now();
+    if (now - this.lastToggleTime < 250) return;
+    this.lastToggleTime = now;
+    this.toggleGraceUntil = now + 600;
 
-    if (this.isPlaying || ytPlaying) {
+    // Trust YouTube's actual player state as the source of truth (1 = PLAYING, 0 = ENDED)
+    const hasStateFn = typeof this.ytPlayer.getPlayerState === "function";
+    const state = hasStateFn ? this.ytPlayer.getPlayerState() : null;
+    const isCurrentlyPlaying =
+      typeof state === "number" ? state === 1 : this.isPlaying;
+
+    clearTimeout(this.resumeFallbackTimer);
+
+    if (isCurrentlyPlaying) {
+      this.isPlaying = false;
+      this.setPlayStateUI(false);
+      if (this.loader) this.loader.classList.add("hidden");
       this.ytPlayer.pauseVideo();
-    } else {
-      this.ytPlayer.playVideo();
+      return;
     }
+
+    // Resume playback
+    this.hideOverlayMessage();
+    this.isPlaying = true;
+    this.setPlayStateUI(true);
+
+    if (state === 0) {
+      this.ytPlayer.seekTo(0, true);
+    }
+    this.ytPlayer.playVideo();
+
+    // Recovery fallback if YouTube stays stuck in PAUSED/CUED after clicking Play
+    this.resumeFallbackTimer = setTimeout(() => {
+      if (
+        this.isDestroyed ||
+        !this.ytPlayer ||
+        typeof this.ytPlayer.getPlayerState !== "function"
+      ) {
+        return;
+      }
+
+      const afterState = this.ytPlayer.getPlayerState();
+      // Only intervene if YouTube is NOT playing (1) and NOT actively buffering (3)
+      if (afterState !== 1 && afterState !== 3) {
+        if (this.isLiveStream) {
+          const liveTarget = Math.max(
+            this.ytPlayer.getDuration() || 0,
+            this.liveEdge,
+            this.duration
+          );
+          if (liveTarget > 0) {
+            this.ytPlayer.seekTo(liveTarget, true);
+          }
+        } else {
+          const cur = this.ytPlayer.getCurrentTime() || 0;
+          this.ytPlayer.seekTo(cur, true);
+        }
+        this.ytPlayer.playVideo();
+      }
+    }, 450);
   }
 
   setPlayStateUI(playing) {
@@ -612,7 +671,7 @@ class PaduraPlayer {
   }
 
   /**
-   * Continuous loop syncing timeline, duration, and live edge status
+   * Continuous loop syncing player state, timeline, duration, and live edge
    */
   startTimeLoop() {
     clearInterval(this.timelineInterval);
@@ -633,6 +692,24 @@ class PaduraPlayer {
       this.lastLoopTime = now;
 
       try {
+        const state =
+          typeof this.ytPlayer.getPlayerState === "function"
+            ? this.ytPlayer.getPlayerState()
+            : null;
+
+        // Self-heal play/pause state if YouTube ever drops an onStateChange event
+        if (now >= this.toggleGraceUntil && typeof state === "number") {
+          if (state === 1 && !this.isPlaying) {
+            this.isPlaying = true;
+            this.setPlayStateUI(true);
+            if (this.loader) this.loader.classList.add("hidden");
+          } else if ((state === 2 || state === 5) && this.isPlaying) {
+            this.isPlaying = false;
+            this.setPlayStateUI(false);
+            if (this.loader) this.loader.classList.add("hidden");
+          }
+        }
+
         const cur = this.ytPlayer.getCurrentTime() || 0;
         const rawDur = this.ytPlayer.getDuration() || 0;
         const loadedFraction = this.ytPlayer.getVideoLoadedFraction() || 0;
@@ -703,6 +780,7 @@ class PaduraPlayer {
           !this.isLiveStream &&
           this.loopNonLive &&
           this.isPlaying &&
+          state === 1 &&
           !this.isDragging &&
           now >= this.seekLockUntil &&
           effectiveDuration > 2 &&
@@ -786,6 +864,7 @@ class PaduraPlayer {
     this.isDestroyed = true;
     clearInterval(this.timelineInterval);
     clearTimeout(this.controlsFadeTimer);
+    clearTimeout(this.resumeFallbackTimer);
     this.isDragging = false;
     this.pendingSeekTarget = null;
     if (this.wrapper) this.wrapper.classList.remove("is-dragging");
