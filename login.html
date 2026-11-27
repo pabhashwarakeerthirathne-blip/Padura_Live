@@ -6,30 +6,7 @@
   <title>Sign In – PADURA LIVE</title>
   <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
   <link rel="stylesheet" href="assets/css/style.css">
-  <link rel="stylesheet" href="assets/css/night-theme.css">
   <style>
-    :root {
-      --login-bg: #0b0f19;
-      --login-card: #111624;
-      --login-input-bg: #0b0f19;
-      --login-gold: #FBBF24;
-      --login-gold-deep: #F59E0B;
-      --login-gold-dark: #D97706;
-    }
-
-    html,
-    body {
-      background: var(--login-bg) !important;
-      color: #F8FAFC !important;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    .padura-bg-backdrop,
-    .ambient-glow {
-      display: none !important;
-    }
-
     .auth-page-wrapper {
       min-height: 100vh;
       display: flex;
@@ -39,27 +16,21 @@
       padding: 2.5rem 1.5rem;
       position: relative;
       z-index: 1;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.08), transparent 45%),
-        var(--login-bg) !important;
     }
-
     .auth-card {
       width: 100%;
       max-width: 460px;
-      background: var(--login-card) !important;
-      border: 1px solid rgba(251, 191, 36, 0.22) !important;
-      border-radius: var(--radius-lg, 12px);
-      padding: clamp(24px, 5vw, 42px);
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 32px rgba(251, 191, 36, 0.06) !important;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
+      background: rgba(13, 17, 32, 0.86);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(236, 72, 153, 0.35);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 85, 247, 0.3);
       position: relative;
       z-index: 10;
       overflow: hidden;
     }
-
-    /* Gold top accent bar replacing the orange #bd3b2e bar */
     .auth-card::before {
       content: '';
       position: absolute;
@@ -67,40 +38,36 @@
       left: 0;
       right: 0;
       height: 4px;
-      background: linear-gradient(90deg, var(--login-gold-dark), var(--login-gold), var(--login-gold-deep)) !important;
+      background: var(--marquee-gradient);
     }
-
     .auth-banner-thumb {
       width: 100%;
-      height: 112px;
-      border-radius: var(--radius-md, 8px);
+      height: 85px;
+      border-radius: var(--radius-md);
       overflow: hidden;
       margin-bottom: 1.5rem;
-      border: 1px solid rgba(251, 191, 36, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       position: relative;
     }
-
     .auth-banner-thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       object-position: center 30%;
     }
-
     .auth-banner-badge {
       position: absolute;
       bottom: 6px;
       right: 8px;
-      background: rgba(7, 11, 20, 0.88);
-      padding: 3px 10px;
-      border-radius: var(--radius-full, 9999px);
-      font-size: 0.7rem;
+      background: rgba(7, 11, 20, 0.85);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.68rem;
       font-weight: 800;
-      color: var(--login-gold);
-      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
       letter-spacing: 0.04em;
     }
-
     .auth-brand {
       display: flex;
       flex-direction: column;
@@ -108,96 +75,36 @@
       text-align: center;
       margin-bottom: 1.75rem;
     }
-
     .auth-brand img {
       width: 48px;
       height: 48px;
       margin-bottom: 0.65rem;
-      filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.35));
+      filter: drop-shadow(0 0 12px rgba(236, 72, 153, 0.5));
     }
-
     .auth-brand h2 {
-      background: none !important;
-      color: #FFFFFF !important;
-      -webkit-text-fill-color: #FFFFFF !important;
-      font-size: 1.45rem;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      margin: 0;
+      font-size: 1.65rem;
+      font-weight: 900;
+      background: var(--marquee-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 0.02em;
     }
-
     .auth-brand p {
-      font-size: 0.85rem;
-      color: #CBD5E1 !important;
-      margin-top: 0.35rem;
-      font-weight: 400;
+      font-size: 0.8rem;
+      color: #CBD5E1;
+      margin-top: 0.25rem;
+      font-weight: 500;
     }
-
-    .form-label {
-      color: #E2E8F0 !important;
-      font-weight: 600;
-      font-size: 0.86rem;
-    }
-
-    .form-label .required {
-      color: var(--login-gold);
-    }
-
-    .form-input {
-      background: var(--login-input-bg) !important;
-      border: 1px solid rgba(148, 163, 184, 0.28) !important;
-      border-radius: 6px;
-      color: #FFFFFF !important;
-      font-size: 0.94rem;
-    }
-
-    .form-input::placeholder {
-      color: #94A3B8 !important;
-      opacity: 1;
-    }
-
-    .form-input:focus {
-      border-color: var(--login-gold) !important;
-      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.18) !important;
-      outline: none;
-    }
-
-    .input-icon,
-    .toggle-pw {
-      color: #94A3B8 !important;
-    }
-
-    .toggle-pw:hover {
-      color: var(--login-gold) !important;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--login-gold-deep), var(--login-gold)) !important;
-      border-color: var(--login-gold-deep) !important;
-      color: #0b0f19 !important;
-      font-weight: 700;
-      font-size: 0.95rem;
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25) !important;
-      transition: filter 0.2s ease, transform 0.15s ease;
-    }
-
-    .btn-primary:hover {
-      filter: brightness(1.08);
-      border-color: var(--login-gold) !important;
-    }
-
     .auth-helper-text {
-      font-size: 0.78rem;
-      color: #94A3B8;
+      font-size: 0.74rem;
+      color: var(--text-muted);
       margin-top: 0.4rem;
     }
-
     .auth-footer {
       margin-top: 1.5rem;
       text-align: center;
-      font-size: 0.8rem;
-      color: #94A3B8;
+      font-size: 0.78rem;
+      color: var(--text-dim);
     }
   </style>
 </head>
@@ -314,3 +221,9 @@
           window.showToast(err.message || "Sign in failed.", "error");
         }
         submitBtn.disabled = false;
+        btnText.textContent = "Sign In";
+      }
+    });
+  </script>
+</body>
+</html>
