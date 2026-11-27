@@ -1,8 +1,8 @@
 /**
  * PADURA LIVE - CUSTOM YOUTUBE IFRAME LIVE PLAYER CONTROLLER
  * Integrates YouTube IFrame Player API with custom controls,
- * synced click & drag DVR timeline scrubbing, endless VOD looping,
- * speed selection, volume, and fullscreen.
+ * accurate wall-clock live-edge tracking, synced drag DVR scrubbing,
+ * endless non-live looping, speed selection, volume, and fullscreen.
  */
 
 class PaduraPlayer {
@@ -22,16 +22,23 @@ class PaduraPlayer {
     this.volume = 100;
     this.currentSpeed = 1;
 
+    // Live vs VOD state (explicit boolean if passed, otherwise auto-detected)
+    this.explicitIsLive = typeof options.isLive === "boolean" ? options.isLive : null;
     this.isLiveStream = options.isLive === true;
     this.loopNonLive = options.loopNonLive !== false;
-    this.hasInitialLiveSynced = false;
+
+    // Wall-clock live edge anchor (avoids YouTube's +3600s getDuration() live bug)
+    this.liveAnchorInitialized = false;
+    this.liveAnchorTime = 0;
+    this.liveAnchorClock = 0;
+    this.needsLiveRecalibrate = false;
+    this.playingStartedAt = null;
+    this.initialDuration = 0;
+
     this.userHasSeeked = false;
     this.dvrAvailable = false;
-    this.initialDuration = 0;
-    this.liveEdge = 0;
     this.duration = 0;
     this.currentTime = 0;
-    this.lastLoopTime = 0;
 
     this.isDragging = false;
     this.dragTargetTime = 0;
@@ -58,9 +65,6 @@ class PaduraPlayer {
     this._listeners.push({ target, type, handler, options });
   }
 
-  /**
-   * Load YouTube API and initialize player
-   */
   init() {
     this.bindDomElements();
     this.loadYouTubeIframeAPI();
@@ -192,6 +196,9 @@ class PaduraPlayer {
       case window.YT.PlayerState.PLAYING:
         clearTimeout(this.resumeFallbackTimer);
         this.isPlaying = true;
+        if (!this.playingStartedAt) {
+          this.playingStartedAt = Date.now();
+        }
         this.setPlayStateUI(true);
         if (this.loader) this.loader.classList.add("hidden");
         if (window.PaduraSecurity && this.broadcastId) {
@@ -273,19 +280,16 @@ class PaduraPlayer {
   }
 
   setupEventListeners() {
-    // Play / Pause button in controls bar
     this.addListener(this.playBtn, "click", (e) => {
       e.stopPropagation();
       this.togglePlay();
     });
 
-    // Big center Play overlay button
     this.addListener(this.centerPlayBtn, "click", (e) => {
       e.stopPropagation();
       this.togglePlay();
     });
 
-    // Clicking anywhere in the middle of the player toggles both play and pause
     this.addListener(this.clickShield, "click", (e) => {
       if (
         e.target &&
@@ -298,14 +302,10 @@ class PaduraPlayer {
       this.togglePlay();
     });
 
-    // Seek buttons (-10s / +10s)
     this.addListener(this.seekBackBtn, "click", () => this.seekRelative(-10));
     this.addListener(this.seekFwdBtn, "click", () => this.seekRelative(10));
-
-    // Jump to Live Edge button
     this.addListener(this.liveSyncBtn, "click", () => this.syncToLive());
 
-    // Timeline Scrubber (click + drag on mouse and touch)
     if (this.timelineWrapper) {
       this.addListener(this.timelineWrapper, "mousedown", (e) => {
         if (e.button !== 0) return;
@@ -331,14 +331,12 @@ class PaduraPlayer {
       this.addListener(window, "touchcancel", (e) => this.handleDragEnd(e));
     }
 
-    // Volume & Mute
     this.addListener(this.volumeBtn, "click", () => this.toggleMute());
     this.addListener(this.volumeSlider, "input", (e) => {
       const val = parseInt(e.target.value, 10);
       if (!isNaN(val)) this.setVolume(val);
     });
 
-    // Speed Selector
     if (this.speedBtn && this.speedDropdown) {
       this.addListener(this.speedBtn, "click", (e) => {
         e.stopPropagation();
@@ -349,16 +347,29 @@ class PaduraPlayer {
       });
     }
 
-    // Fullscreen Toggle
     this.addListener(this.fullscreenBtn, "click", () => this.toggleFullscreen());
 
-    // Controls auto-hide on mouse movement
     this.addListener(this.wrapper, "mousemove", () => this.handleMouseMove());
     this.addListener(this.wrapper, "mouseleave", () => {
       if (this.isPlaying && !this.isDragging && this.wrapper) {
         this.wrapper.classList.remove("controls-visible");
       }
     });
+  }
+
+  /**
+   * Compute true live edge using wall-clock elapsed time since playback anchored
+   */
+  getTrueLiveEdge(now = Date.now()) {
+    if (!this.liveAnchorInitialized) return 0;
+    const elapsed = Math.max(0, (now - this.liveAnchorClock) / 1000);
+    return this.liveAnchorTime + elapsed;
+  }
+
+  anchorLiveEdge(currentTime, now = Date.now()) {
+    this.liveAnchorTime = currentTime;
+    this.liveAnchorClock = now;
+    this.liveAnchorInitialized = true;
   }
 
   getClientX(e) {
@@ -408,7 +419,11 @@ class PaduraPlayer {
     }
 
     if (this.timeDisplay) {
-      this.timeDisplay.textContent = `${this.formatTime(clampedTime)} / ${this.formatTime(safeDur)}`;
+      if (this.isLiveStream && isAtLiveEdge) {
+        this.timeDisplay.textContent = this.formatTime(clampedTime);
+      } else {
+        this.timeDisplay.textContent = `${this.formatTime(clampedTime)} / ${this.formatTime(safeDur)}`;
+      }
     }
   }
 
@@ -473,13 +488,11 @@ class PaduraPlayer {
   togglePlay() {
     if (!this.isReady || !this.ytPlayer) return;
 
-    // Prevent overlapping click handlers from toggling twice on a single click
     const now = Date.now();
     if (now - this.lastToggleTime < 250) return;
     this.lastToggleTime = now;
     this.toggleGraceUntil = now + 600;
 
-    // Trust YouTube's actual player state as the source of truth (1 = PLAYING, 0 = ENDED)
     const hasStateFn = typeof this.ytPlayer.getPlayerState === "function";
     const state = hasStateFn ? this.ytPlayer.getPlayerState() : null;
     const isCurrentlyPlaying =
@@ -495,7 +508,6 @@ class PaduraPlayer {
       return;
     }
 
-    // Resume playback
     this.hideOverlayMessage();
     this.isPlaying = true;
     this.setPlayStateUI(true);
@@ -505,7 +517,6 @@ class PaduraPlayer {
     }
     this.ytPlayer.playVideo();
 
-    // Recovery fallback if YouTube stays stuck in PAUSED/CUED after clicking Play
     this.resumeFallbackTimer = setTimeout(() => {
       if (
         this.isDestroyed ||
@@ -516,14 +527,9 @@ class PaduraPlayer {
       }
 
       const afterState = this.ytPlayer.getPlayerState();
-      // Only intervene if YouTube is NOT playing (1) and NOT actively buffering (3)
       if (afterState !== 1 && afterState !== 3) {
         if (this.isLiveStream) {
-          const liveTarget = Math.max(
-            this.ytPlayer.getDuration() || 0,
-            this.liveEdge,
-            this.duration
-          );
+          const liveTarget = this.getTrueLiveEdge(Date.now());
           if (liveTarget > 0) {
             this.ytPlayer.seekTo(liveTarget, true);
           }
@@ -562,15 +568,24 @@ class PaduraPlayer {
   syncToLive() {
     if (!this.isReady || !this.ytPlayer) return;
 
+    const now = Date.now();
     const rawDur = this.ytPlayer.getDuration() || 0;
-    const liveTarget = Math.max(rawDur, this.liveEdge, this.duration);
+    const trueLiveEdge = this.getTrueLiveEdge(now);
+    const displayTarget = trueLiveEdge || this.duration || rawDur;
 
-    if (liveTarget > 0) {
-      const seekTarget = this.isLiveStream ? liveTarget + 60 : liveTarget;
+    if (displayTarget > 0) {
+      // Overshoot on live streams so YouTube clamps directly to the real live head
+      const seekTarget = this.isLiveStream
+        ? Math.max(rawDur, trueLiveEdge) + 3600
+        : displayTarget;
+
       this.userHasSeeked = true;
       this.pendingSeekTarget = null;
-      this.seekLockUntil = Date.now() + 800;
-      this.updateTimelineVisuals(liveTarget, liveTarget);
+      this.seekLockUntil = now + 1200;
+      if (this.isLiveStream) {
+        this.needsLiveRecalibrate = true;
+      }
+      this.updateTimelineVisuals(displayTarget, displayTarget);
       this.ytPlayer.seekTo(seekTarget, true);
     }
     this.ytPlayer.playVideo();
@@ -671,11 +686,10 @@ class PaduraPlayer {
   }
 
   /**
-   * Continuous loop syncing player state, timeline, duration, and live edge
+   * Continuous loop syncing state, true live edge, timeline, and looping
    */
   startTimeLoop() {
     clearInterval(this.timelineInterval);
-    this.lastLoopTime = Date.now();
 
     this.timelineInterval = setInterval(() => {
       if (
@@ -688,8 +702,6 @@ class PaduraPlayer {
       }
 
       const now = Date.now();
-      const dt = Math.max(0, (now - this.lastLoopTime) / 1000);
-      this.lastLoopTime = now;
 
       try {
         const state =
@@ -697,10 +709,11 @@ class PaduraPlayer {
             ? this.ytPlayer.getPlayerState()
             : null;
 
-        // Self-heal play/pause state if YouTube ever drops an onStateChange event
+        // Self-heal play/pause UI if YouTube drops an onStateChange event
         if (now >= this.toggleGraceUntil && typeof state === "number") {
           if (state === 1 && !this.isPlaying) {
             this.isPlaying = true;
+            if (!this.playingStartedAt) this.playingStartedAt = now;
             this.setPlayStateUI(true);
             if (this.loader) this.loader.classList.add("hidden");
           } else if ((state === 2 || state === 5) && this.isPlaying) {
@@ -716,28 +729,54 @@ class PaduraPlayer {
         const videoData =
           typeof this.ytPlayer.getVideoData === "function" ? this.ytPlayer.getVideoData() : null;
 
-        // Detect live stream: 0 duration while playing (no DVR) or growing duration (DVR)
-        if (rawDur === 0 && this.isPlaying) {
-          this.isLiveStream = true;
-        }
         if (this.initialDuration === 0 && rawDur > 0) {
           this.initialDuration = rawDur;
         }
-        if (
-          (videoData && videoData.isLive === true) ||
-          (this.initialDuration > 0 && rawDur > this.initialDuration + 1.5)
-        ) {
-          this.isLiveStream = true;
+
+        // Auto-detect live streams when isLive wasn't explicitly set to false
+        if (this.explicitIsLive !== false && !this.isLiveStream) {
+          const playingLongEnough =
+            state === 1 && this.playingStartedAt && now - this.playingStartedAt > 2000;
+          const matchesLivePadding =
+            !this.userHasSeeked &&
+            state === 1 &&
+            cur > 5 &&
+            rawDur > cur &&
+            (Math.abs(rawDur - cur - 3600) <= 300 || rawDur === 3600);
+
+          if (
+            (videoData && videoData.isLive === true) ||
+            (playingLongEnough && rawDur === 0) ||
+            (this.initialDuration > 0 && rawDur > this.initialDuration + 1.5) ||
+            matchesLivePadding
+          ) {
+            this.isLiveStream = true;
+          }
         }
 
-        // Keep duration synced without letting liveEdge drift far ahead of YouTube
+        // Determine accurate duration / live edge
         let effectiveDuration = rawDur;
+
         if (this.isLiveStream) {
-          if (rawDur > 0) {
-            const nextEdge =
-              this.liveEdge > 0 ? this.liveEdge + (this.isPlaying ? dt : 0) : Math.max(rawDur, cur);
-            this.liveEdge = Math.min(Math.max(nextEdge, rawDur, cur), rawDur + 5);
-            effectiveDuration = this.liveEdge;
+          if (state === 1 && cur > 0) {
+            // Anchor once on initial live playback, or recalibrate after clicking LIVE
+            if (!this.liveAnchorInitialized) {
+              this.anchorLiveEdge(cur, now);
+            } else if (this.needsLiveRecalibrate && now >= this.seekLockUntil) {
+              this.anchorLiveEdge(cur, now);
+              this.needsLiveRecalibrate = false;
+            }
+          }
+
+          if (this.liveAnchorInitialized) {
+            let liveEdge = this.getTrueLiveEdge(now);
+            if (cur > liveEdge) {
+              this.anchorLiveEdge(cur, now);
+              liveEdge = cur;
+            }
+            effectiveDuration = liveEdge;
+          } else {
+            effectiveDuration = 0;
           }
         } else if (cur > rawDur && rawDur > 0) {
           effectiveDuration = cur;
@@ -747,27 +786,15 @@ class PaduraPlayer {
         this.duration = effectiveDuration;
         this.dvrAvailable = effectiveDuration > 0 && isFinite(effectiveDuration);
 
-        // If joining an active DVR livestream at 00:00, auto-snap to live edge once
-        if (
-          this.isLiveStream &&
-          this.isPlaying &&
-          !this.hasInitialLiveSynced &&
-          !this.userHasSeeked &&
-          effectiveDuration > 30 &&
-          effectiveDuration - cur > 30
-        ) {
-          this.hasInitialLiveSynced = true;
-          this.seekLockUntil = now + 800;
-          this.updateTimelineVisuals(effectiveDuration, effectiveDuration);
-          this.ytPlayer.seekTo(effectiveDuration, true);
-          return;
-        }
-
         if (this.bufferBar) {
-          this.bufferBar.style.width = `${Math.min(100, Math.max(0, loadedFraction * 100))}%`;
+          const bufPct = this.isLiveStream
+            ? this.dvrAvailable
+              ? Math.min(100, Math.max(0, (cur / effectiveDuration) * 100))
+              : 100
+            : Math.min(100, Math.max(0, loadedFraction * 100));
+          this.bufferBar.style.width = `${bufPct}%`;
         }
 
-        // Unlock seek lock as soon as YouTube reaches the sought keyframe
         if (this.pendingSeekTarget !== null) {
           if (Math.abs(cur - this.pendingSeekTarget) <= 4 || now >= this.seekLockUntil) {
             this.pendingSeekTarget = null;
@@ -775,7 +802,7 @@ class PaduraPlayer {
           }
         }
 
-        // Loop non-live videos just before the end so YouTube's end-screen never flashes
+        // Endless loop for non-live videos
         if (
           !this.isLiveStream &&
           this.loopNonLive &&
@@ -805,12 +832,12 @@ class PaduraPlayer {
           if (this.playedBar) this.playedBar.style.width = "100%";
           if (this.seekerHandle) this.seekerHandle.style.left = "100%";
           if (this.liveSyncBtn) {
-            this.liveSyncBtn.style.display = "";
+            this.liveSyncBtn.style.display = this.isLiveStream ? "" : "none";
             this.liveSyncBtn.classList.add("is-live");
             if (liveLabel) liveLabel.textContent = "LIVE";
           }
           if (this.timeDisplay) {
-            this.timeDisplay.textContent = "LIVE";
+            this.timeDisplay.textContent = this.isLiveStream ? "LIVE" : "00:00 / 00:00";
           }
           if (this.seekBackBtn) this.seekBackBtn.disabled = true;
           if (this.seekFwdBtn) this.seekFwdBtn.disabled = true;
