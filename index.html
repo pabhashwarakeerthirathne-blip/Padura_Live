@@ -1,396 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PADURA LIVE – Official University Live Streaming Platform</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PADURA LIVE — The night, in your hands</title>
   <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
   <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Sinhala:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* Festival Marquee Ticker */
-    .ticker-ribbon {
-      background: linear-gradient(90deg, #EF4444 0%, #D946EF 35%, #7C3AED 70%, #2563EB 100%);
-      color: #FFFFFF;
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      padding: 0.4rem 1rem;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      overflow: hidden;
-      white-space: nowrap;
-      box-shadow: 0 2px 12px rgba(239, 68, 68, 0.4);
-    }
-
-    .ticker-content {
-      display: inline-flex;
-      align-items: center;
-      gap: 2rem;
-      animation: ticker-slide 28s linear infinite;
-    }
-
-    @keyframes ticker-slide {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-
-    /* Hero Layout */
-    .hero-section {
-      min-height: calc(100vh - 105px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 3.5rem 1.5rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.65rem;
-      padding: 0.45rem 1.15rem;
-      background: rgba(236, 72, 153, 0.15);
-      border: 1px solid rgba(236, 72, 153, 0.4);
-      border-radius: var(--radius-full);
-      font-size: 0.825rem;
-      font-weight: 800;
-      color: #F472B6;
-      margin-bottom: 1.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      box-shadow: 0 0 20px rgba(236, 72, 153, 0.25);
-    }
-
-    .hero-title {
-      font-size: 3.65rem;
-      font-weight: 900;
-      line-height: 1.15;
-      max-width: 860px;
-      margin-bottom: 1.25rem;
-      letter-spacing: -0.03em;
-    }
-
-    .hero-title .highlight-marquee {
-      background: linear-gradient(135deg, #FF6B4A 0%, #FFAE00 45%, #FF1361 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 25px rgba(255, 110, 74, 0.4));
-    }
-
-    .hero-title .highlight-blue {
-      background: linear-gradient(135deg, #A855F7 0%, #38BDF8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hero-subtitle {
-      font-size: 1.2rem;
-      color: #CBD5E1;
-      max-width: 680px;
-      margin-bottom: 2.5rem;
-      line-height: 1.6;
-      font-weight: 400;
-    }
-
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-bottom: 3.5rem;
-    }
-
-    /* Featured Padura Photo Showcase Card */
-    .banner-showcase-container {
-      width: 100%;
-      max-width: 1050px;
-      margin: 0 auto 3.5rem;
-      position: relative;
-    }
-
-    .banner-card {
-      position: relative;
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      border: 2px solid rgba(236, 72, 153, 0.4);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(168, 85, 247, 0.35);
-      background: #000;
-      transition: var(--transition);
-    }
-
-    .banner-card:hover {
-      border-color: rgba(245, 158, 11, 0.6);
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 50px rgba(245, 158, 11, 0.4);
-      transform: translateY(-4px);
-    }
-
-    .banner-img {
-      width: 100%;
-      height: auto;
-      display: block;
-      transition: transform 0.4s ease;
-    }
-
-    .banner-card:hover .banner-img {
-      transform: scale(1.02);
-    }
-
-    .banner-overlay-bar {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: linear-gradient(0deg, rgba(7, 11, 20, 0.95) 0%, rgba(7, 11, 20, 0.7) 60%, transparent 100%);
-      padding: 1.5rem 2rem;
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
-      text-align: left;
-    }
-
-    .banner-badge-live {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.35rem 0.85rem;
-      background: rgba(239, 68, 68, 0.25);
-      border: 1px solid rgba(239, 68, 68, 0.6);
-      border-radius: var(--radius-full);
-      color: #FECACA;
-      font-size: 0.75rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-    }
-
-    /* Colorful Features Grid */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      max-width: 1100px;
-      width: 100%;
-      text-align: left;
-    }
-
-    .feature-card {
-      background: rgba(17, 24, 39, 0.78);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: var(--radius-lg);
-      padding: 2rem;
-      transition: var(--transition);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      opacity: 0.85;
-    }
-
-    .feature-card.card-magenta::before { background: linear-gradient(90deg, #EC4899, #8B5CF6); }
-    .feature-card.card-gold::before { background: linear-gradient(90deg, #F59E0B, #EF4444); }
-    .feature-card.card-cyan::before { background: linear-gradient(90deg, #06B6D4, #3B82F6); }
-
-    .feature-card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(255, 255, 255, 0.25);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(168, 85, 247, 0.25);
-    }
-
-    .feature-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1.25rem;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    .feature-icon.icon-magenta { background: rgba(236, 72, 153, 0.2); color: #F472B6; border: 1px solid rgba(236, 72, 153, 0.35); }
-    .feature-icon.icon-gold { background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35); }
-    .feature-icon.icon-cyan { background: rgba(6, 182, 212, 0.2); color: #38BDF8; border: 1px solid rgba(6, 182, 212, 0.35); }
-
-    .feature-card h3 {
-      font-size: 1.2rem;
-      margin-bottom: 0.65rem;
-      color: #FFFFFF;
-    }
-
-    .feature-card p {
-      font-size: 0.9rem;
-      line-height: 1.6;
-      color: #CBD5E1;
-    }
-
-    footer {
-      background: rgba(7, 11, 20, 0.85);
-      backdrop-filter: blur(12px);
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 2.25rem 1.5rem;
-      text-align: center;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-    }
-
-    @media (max-width: 768px) {
-      .hero-title { font-size: 2.45rem; }
-      .hero-subtitle { font-size: 1rem; }
-    }
+  :root{--paper:#0b0f19;--ink:#F8FAFC;--red:#FBBF24;--muted:#CBD5E1;--line:rgba(255,255,255,.14)}
+  *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  .padura-bg-backdrop,.ambient-glow,.ticker-ribbon{display:none!important}
+  .pl-nav{height:82px;padding:0 clamp(22px,6vw,92px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);position:relative;z-index:2;background:#0b0f19}
+  .pl-brand{display:flex;align-items:center;gap:12px;color:var(--ink);text-decoration:none}.pl-brand img{width:42px;height:42px;object-fit:contain;filter:none}.pl-brand strong{display:block;font:800 16px Manrope;letter-spacing:.14em;color:#F8FAFC}.pl-brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.13em;text-transform:uppercase;margin-top:3px}
+  .pl-nav-right{display:flex;align-items:center;gap:28px}.pl-nav-right span{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}.pl-login{background:#111624;color:#F8FAFC;border:1px solid rgba(251,191,36,.45);padding:13px 21px;text-decoration:none;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;transition:.2s}.pl-login:hover{background:var(--red);border-color:var(--red);color:#0b0f19}
+  .pl-main{max-width:1440px;margin:auto;padding:clamp(26px,5vw,72px) clamp(22px,6vw,92px) 0}.pl-kicker{display:flex;align-items:center;gap:12px;font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--red)}.pl-kicker:before{content:'';width:34px;height:2px;background:var(--red)}
+  .pl-hero{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(28px,5vw,76px);align-items:center;padding:44px 0 60px}.pl-copy{position:relative;z-index:1}.pl-index{font:600 11px 'DM Sans';letter-spacing:.18em;color:#CBD5E1;margin:0 0 22px}.pl-title{font:800 clamp(58px,8vw,116px)/.91 Manrope,sans-serif;letter-spacing:-.085em;margin:0 0 25px;max-width:680px;color:#F8FAFC}.pl-title em{font-family:'Noto Sans Sinhala',sans-serif;font-style:normal;color:var(--red);letter-spacing:-.08em;display:block;font-size:.83em;margin-top:12px}.pl-desc{font-size:15px;line-height:1.8;color:#E2E8F0;max-width:420px;margin:0 0 32px}.pl-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.pl-primary{display:inline-flex;align-items:center;gap:18px;background:var(--red);color:#0b0f19;padding:17px 22px;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;transition:.2s}.pl-primary:hover{background:#FCD34D;color:#0b0f19;transform:translateY(-2px)}.pl-primary b{font-size:18px;font-weight:400}.pl-secondary{color:#F8FAFC;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;padding:16px 12px;border-bottom:1px solid var(--red);transition:.2s}.pl-secondary:hover{color:var(--red)}
+  .pl-art-wrap{position:relative;padding:0 0 28px 28px}.pl-art-wrap:before{content:'2026';position:absolute;left:-16px;top:-35px;font:800 clamp(65px,9vw,130px)/1 Manrope;color:rgba(255,255,255,.05);letter-spacing:-.09em;z-index:0}.pl-art{position:relative;z-index:1;background:#1b1719;box-shadow:18px 18px 0 var(--red);overflow:hidden}.pl-art img{width:100%;height:auto;display:block;aspect-ratio:1024/512;object-fit:cover;transition:transform .7s cubic-bezier(.2,.8,.2,1)}.pl-art:hover img{transform:scale(1.035)}.pl-art-caption{position:absolute;left:0;bottom:0;width:100%;display:flex;justify-content:space-between;align-items:end;padding:18px 20px;background:linear-gradient(transparent,rgba(0,0,0,.85));color:#fff}.pl-art-caption small{font-size:9px;letter-spacing:.18em;text-transform:uppercase;opacity:.9;color:#E2E8F0}.pl-art-caption strong{display:block;font:700 17px 'Noto Sans Sinhala',sans-serif;margin-top:4px}.pl-art-caption .arrow{font-size:30px;font-weight:300;color:var(--red)}
+  .pl-rule{height:1px;background:var(--line)}.pl-strip{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:24px;padding:24px 0 42px}.pl-meta{display:flex;align-items:center;gap:14px}.pl-meta .num{font:700 11px Manrope;color:var(--red);letter-spacing:.12em}.pl-meta strong{display:block;font-size:12px;letter-spacing:.02em;color:#F8FAFC}.pl-meta small{display:block;font-size:10px;color:var(--muted);margin-top:4px}.pl-bottom{background:#111624;color:#f4f0e9;padding:34px clamp(22px,6vw,92px);margin-top:0;border-top:1px solid var(--line)}.pl-bottom-inner{max-width:1256px;margin:auto;display:flex;justify-content:space-between;gap:25px;align-items:center}.pl-bottom strong{font:800 12px Manrope;letter-spacing:.16em}.pl-bottom p{color:#CBD5E1;font-size:11px;margin:6px 0 0}.pl-bottom a{color:#F8FAFC;text-decoration:none;font-size:10px;letter-spacing:.15em;text-transform:uppercase;border-bottom:1px solid var(--red);padding-bottom:7px;transition:.2s}.pl-bottom a:hover{color:var(--red)}
+  @media(max-width:800px){.pl-hero{grid-template-columns:1fr;gap:44px;padding-top:30px}.pl-title{font-size:clamp(56px,15vw,90px)}.pl-art-wrap{margin-left:12px}.pl-strip{grid-template-columns:1fr;gap:17px}.pl-nav-right span{display:none}.pl-bottom-inner{align-items:flex-start;flex-direction:column}.pl-nav{height:70px}}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+  <link rel="stylesheet" href="assets/css/night-theme.css">
+  <style>
+  /* Ensure dark header, gold accents, and high-contrast text take precedence over night-theme.css */
+  :root{--paper:#0b0f19!important;--ink:#F8FAFC!important;--red:#FBBF24!important;--muted:#CBD5E1!important;--line:rgba(255,255,255,.14)!important}
+  body{background:var(--paper)!important;color:var(--ink)!important}
+  .pl-nav{background:#0b0f19!important;border-bottom:1px solid var(--line)!important}
+  .pl-brand,.pl-brand strong{color:#F8FAFC!important}
+  .pl-brand img{filter:none!important}
+  .pl-kicker,.pl-title em,.pl-meta .num,.pl-art-caption .arrow{color:var(--red)!important}
+  .pl-kicker:before{background:var(--red)!important}
+  .pl-primary{background:var(--red)!important;color:#0b0f19!important;border-color:var(--red)!important}
+  .pl-primary:hover{background:#FCD34D!important;color:#0b0f19!important}
+  .pl-login{background:#111624!important;border:1px solid rgba(251,191,36,.45)!important;color:#F8FAFC!important}
+  .pl-login:hover{background:var(--red)!important;border-color:var(--red)!important;color:#0b0f19!important}
+  .pl-art{box-shadow:18px 18px 0 var(--red)!important}
+  .pl-secondary{color:#F8FAFC!important;border-bottom:1px solid var(--red)!important}
+  .pl-secondary:hover{color:var(--red)!important}
+  .pl-index,.pl-brand small,.pl-nav-right span,.pl-meta small,.pl-bottom p{color:var(--muted)!important}
+  .pl-desc{color:#E2E8F0!important}
+  .pl-title,.pl-meta strong{color:#F8FAFC!important}
+  .pl-bottom{background:#111624!important;border-top:1px solid var(--line)!important}
+  .pl-bottom a{color:#F8FAFC!important;border-bottom-color:var(--red)!important}
+  .pl-bottom a:hover{color:var(--red)!important}
+  .pl-art-wrap:before{color:rgba(255,255,255,.05)!important}
   </style>
 </head>
 <body>
-  <!-- Fixed Padura Photo Background Backdrop -->
-  <div class="padura-bg-backdrop"></div>
-  <div class="ambient-glow"></div>
-
-  <!-- Colorful Festival Ticker Ribbon -->
-  <div class="ticker-ribbon">
-    <div class="ticker-content">
-      <span>🔴 PADURA LIVE 2026</span>
-      <span>•</span>
-      <span>FACULTY OF SCIENCE – UNIVERSITY OF KELANIYA</span>
-      <span>•</span>
-      <span>ගිම්හානය මතින් වසන්තයක අඩහැරය නගනු වස්...</span>
-      <span>•</span>
-      <span>EXCLUSIVE PRIVATE HD LIVESTREAM</span>
-      <span>•</span>
-      <span>AUTHENTICATED ACCESS ONLY</span>
-      <span>•</span>
-      <span>🔴 PADURA LIVE 2026</span>
-      <span>•</span>
-      <span>FACULTY OF SCIENCE – UNIVERSITY OF KELANIYA</span>
-      <span>•</span>
-      <span>ගිම්හානය මතින් වසන්තයක අඩහැරය නගනු වස්...</span>
-    </div>
-  </div>
-
-  <!-- Header Navigation -->
-  <header class="top-nav">
-    <a href="index.html" class="brand-wrapper">
-      <img src="assets/images/logo.svg" alt="Padura Live" class="brand-logo-img">
-      <div>
-        <div class="brand-name">PADURA LIVE</div>
-        <div class="brand-tagline">University of Kelaniya</div>
-      </div>
-    </a>
-    <div>
-      <a href="login.html" class="btn btn-primary">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-        </svg>
-        Sign In to Portal
-      </a>
-    </div>
-  </header>
-
-  <!-- Hero Section -->
-  <main class="hero-section">
-    <div class="hero-badge">
-      <span class="badge-live" style="padding: 2px 7px;"><span class="pulse-dot"></span> LIVE</span>
-      Official Private Broadcast Network • Faculty of Science
-    </div>
-
-    <h1 class="hero-title">
-      Experience <span class="highlight-marquee">පැදුර</span> Live Event in <span class="highlight-blue">Private HD</span>
-    </h1>
-
-    <div class="hero-actions">
-      <a href="login.html" class="btn btn-primary btn-lg">
-        <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-        Sign In & Watch Live
-      </a>
-      <a href="login.html" class="btn btn-gold btn-lg">
-        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        Parent Access Portal
-      </a>
-    </div>
-
-    <!-- Official Padura Banner Photo Showcase Card -->
-    <div class="banner-showcase-container">
-      <div class="banner-card">
-        <img src="assets/images/padura-banner.jpg" alt="Padura Concert Banner - University of Kelaniya" class="banner-img">
-        <div class="banner-overlay-bar">
-          <div>
-            <div class="banner-badge-live">
-              <span class="pulse-dot"></span> BROADCAST READY
-            </div>
-            <div style="font-size: 1.15rem; font-weight: 800; color: #FFF; margin-top: 0.4rem;">
-              පැදුර – ගිම්හානය මතින් වසන්තයක අඩහැරය නගනු වස්...
-            </div>
-            <div style="font-size: 0.8rem; color: #CBD5E1;">
-              විද්‍යාපීඨ ශිෂ්‍ය සංගමය - කැලණිය විශ්වවිද්‍යාලය | Students' Council Faculty Of Science
-            </div>
-          </div>
-          <div>
-            <a href="login.html" class="btn btn-sm btn-primary">Watch Stream</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature Highlights
-    <div class="features-grid">
-      <div class="feature-card card-magenta">
-        <div class="feature-icon icon-magenta">
-          <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h3>Private Role-Based Access</h3>
-        <p>Restricted to authorized students, parents, and administrators with strict Row Level Security (RLS) policies
-          protecting database records.</p>
-      </div>
-    
-      <div class="feature-card card-gold">
-        <div class="feature-icon icon-gold">
-          <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h3>Custom YouTube Player</h3>
-        <p>Embedded Unlisted streaming with custom player controls, DVR live seeker, multi-speed playback (0.25x–2x), and
-          zero external YouTube links.</p>
-      </div>
-    
-      <div class="feature-card card-cyan">
-        <div class="feature-icon icon-cyan">
-          <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-        </div>
-        <h3>Anti-Recording Deterrents</h3>
-        <p>Dynamic student watermarking, right-click deterrence, heartbeat auditing, and session inactivity protection.</p>
-      </div>
-    </div> -->
-  </main>
-
-  <footer>
-    <p>&copy; 2026 PADURA LIVE • Faculty Of Science • University of Kelaniya. All rights reserved.</p>
-  </footer>
-</body>
-</html>
+<header class="pl-nav"><a class="pl-brand" href="index.html"><img src="assets/images/logo.svg" alt=""><span><strong>PADURA LIVE</strong><small>University of Kelaniya · Faculty of Science</small></span></a><div class="pl-nav-right"><span>Private broadcast / 2026</span><a class="pl-login" href="login.html">Portal sign in ↗</a></div></header>
+<main class="pl-main">
+  <div class="pl-kicker">A university broadcast experience</div>
+  <section class="pl-hero">
+    <div class="pl-copy"><p class="pl-index">01 — THE EVENT / LIVE ACCESS</p><h1 class="pl-title">The night<br>is yours.<em>පැදුර</em></h1><p class="pl-desc">A little closer to the music, wherever you are. Join the official PADURA LIVE broadcast from the Faculty of Science, University of Kelaniya.</p><div class="pl-actions"><a class="pl-primary" href="login.html">Enter the experience <b>↗</b></a><a class="pl-secondary" href="login.html">Parent access</a></div></div>
+    <div class="pl-art-wrap"><div class="pl-art"><img src="assets/images/padura-banner.jpg" alt="PADURA university event artwork"><div class="pl-art-caption"><div><small>Faculty of Science · University of Kelaniya</small><strong>පැදුර — නිල සජීවී විකාශය</strong></div><span class="arrow">↗</span></div></div></div>
+  </section>
+  <div class="pl-rule"></div>
+  <section class="pl-strip"><div class="pl-meta"><span class="num">01</span><div><strong>One official stream</strong><small>A single, dedicated event destination</small></div></div><div class="pl-meta"><span class="num">02</span><div><strong>Private access</strong><small>For authorised students and families</small></div></div><div class="pl-meta"><span class="num">03</span><div><strong>Watch anywhere</strong><small>Designed for desktop, tablet and mobile</small></div></div></section>
+</main>
+<footer class="pl-bottom"><div class="pl-bottom-inner"><div><strong>PADURA LIVE / 2026</strong><p>Students’ Council · Faculty of Science · University of Kelaniya</p></div><a href="login.html">Continue to secure portal ↗</a></div></footer>
+</body></html>
