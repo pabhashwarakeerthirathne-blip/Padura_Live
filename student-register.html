@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080D18">
+  <title>Student Registration – PADURA LIVE</title>
+  <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/night-theme.css">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; background:#080D18; color:#F4F0E7; font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .register-shell { min-height:100vh; display:grid; grid-template-columns:minmax(280px, .9fr) minmax(360px, 1.1fr); }
+    .register-aside { position:relative; min-height:100%; padding:clamp(28px,5vw,68px); display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; background:linear-gradient(180deg,rgba(8,13,24,.16),#080D18 92%),url('assets/images/padura-banner.jpg') center/cover; border-right:1px solid rgba(215,184,121,.18); }
+    .register-aside:after { content:""; position:absolute; inset:0; background:linear-gradient(135deg,rgba(8,13,24,.32),rgba(8,13,24,.12) 50%,rgba(8,13,24,.88)); pointer-events:none; }
+    .aside-top,.aside-copy { position:relative; z-index:1; }
+    .brand { display:flex; align-items:center; gap:12px; color:#F4F0E7; text-decoration:none; font-weight:800; letter-spacing:.16em; }
+    .brand img { width:42px;height:42px; }
+    .eyebrow { color:#D7B879; text-transform:uppercase; letter-spacing:.22em; font-size:.72rem; font-weight:800; }
+    .aside-copy h1 { max-width:560px; margin:16px 0; font-family:Georgia,serif; font-weight:500; font-size:clamp(2.8rem,5.2vw,5.5rem); line-height:.98; letter-spacing:-.045em; }
+    .aside-copy p { max-width:440px; color:#C0C6CF; line-height:1.75; }
+    .aside-rule { width:72px;height:2px;background:#D7B879;margin:26px 0; }
+    .aside-foot { color:#AAB3C2; font-size:.76rem; letter-spacing:.08em; position:relative;z-index:1; }
+    .register-main { display:flex; align-items:center; justify-content:center; padding:clamp(24px,5vw,64px); }
+    .register-card { width:min(100%,520px); }
+    .mobile-brand { display:none; }
+    .register-heading { margin-bottom:28px; }
+    .register-heading h2 { margin:8px 0 8px; font-size:clamp(1.9rem,3vw,2.5rem); letter-spacing:-.04em; }
+    .register-heading p { color:#AAB3C2; line-height:1.6; margin:0; }
+    .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px 14px; }
+    .field { min-width:0; }
+    .field.full { grid-column:1/-1; }
+    .field label { display:block; color:#E5E7EB; font-size:.82rem; font-weight:650; margin:0 0 8px; }
+    .field input { width:100%; height:50px; border:1px solid #344155; border-radius:7px; padding:0 14px; background:#101827; color:#F4F0E7; font:inherit; outline:none; transition:border-color .18s,box-shadow .18s; }
+    .field input::placeholder { color:#778397; }
+    .field input:focus { border-color:#D7B879; box-shadow:0 0 0 3px rgba(215,184,121,.13); }
+    .field input[aria-invalid="true"] { border-color:#E17B7B; }
+    .field-hint { color:#8F9BAD; font-size:.72rem; margin:7px 0 0; line-height:1.5; }
+    .password-wrap { position:relative; }
+    .password-wrap input { padding-right:68px; }
+    .show-password { position:absolute; right:9px; top:50%; transform:translateY(-50%); border:0; background:transparent; color:#D7B879; font-size:.74rem; font-weight:700; cursor:pointer; padding:8px; }
+    .form-error { display:none; margin:16px 0 0; padding:11px 13px; border:1px solid rgba(225,123,123,.35); border-radius:7px; color:#FFC1C1; background:rgba(130,35,45,.16); font-size:.82rem; line-height:1.5; }
+    .form-success { display:none; margin:16px 0 0; padding:13px; border:1px solid rgba(119,190,150,.35); border-radius:7px; color:#BCE8CB; background:rgba(30,100,65,.15); font-size:.84rem; line-height:1.55; }
+    .submit { width:100%; height:52px; margin-top:22px; border:1px solid #D7B879; border-radius:7px; background:#D7B879; color:#111722; font-size:.94rem; font-weight:800; letter-spacing:.02em; cursor:pointer; transition:filter .2s,transform .2s; }
+    .submit:hover { filter:brightness(1.08); transform:translateY(-1px); }
+    .submit:disabled { opacity:.62; cursor:wait; transform:none; }
+    .register-footer { margin-top:22px; text-align:center; color:#9AA5B5; font-size:.82rem; }
+    .register-footer a { color:#D7B879; font-weight:700; text-decoration:none; }
+    .security-note { display:flex; gap:10px; align-items:flex-start; margin-top:22px; padding:13px 14px; border:1px solid rgba(148,163,184,.16); border-radius:7px; color:#9AA5B5; font-size:.73rem; line-height:1.55; }
+    .security-note strong { color:#D7B879; }
+    @media(max-width:800px) { .register-shell{grid-template-columns:1fr}.register-aside{display:none}.register-main{min-height:100vh;padding:28px 20px}.mobile-brand{display:flex;margin-bottom:34px}.register-card{max-width:500px} }
+    @media(max-width:480px) { .field-grid{grid-template-columns:1fr;gap:15px}.field.full{grid-column:auto}.register-heading{margin-bottom:22px}.register-main{align-items:flex-start;padding-top:32px} }
+  </style>
+</head>
+<body>
+  <main class="register-shell">
+    <aside class="register-aside" aria-label="PADURA LIVE introduction">
+      <div class="aside-top"><a class="brand" href="index.html"><img src="assets/images/logo.svg" alt=""><span>PADURA LIVE</span></a></div>
+      <div class="aside-copy">
+        <div class="eyebrow">Your place in the audience</div>
+        <h1>Every voice.<br>Every moment.</h1>
+        <div class="aside-rule"></div>
+        <p>Create your student account to access PADURA LIVE events and enjoy the performances made for your community.</p>
+      </div>
+      <div class="aside-foot">PADURA LIVE · STUDENT ACCESS</div>
+    </aside>
+
+    <section class="register-main">
+      <div class="register-card">
+        <a class="brand mobile-brand" href="index.html"><img src="assets/images/logo.svg" alt=""><span>PADURA LIVE</span></a>
+        <header class="register-heading">
+          <div class="eyebrow">Student registration</div>
+          <h2>Create your account</h2>
+          <p>Enter your student details and choose the username and password you want to use when signing in.</p>
+        </header>
+
+        <form id="student-register-form" novalidate>
+          <div class="field-grid">
+            <div class="field full">
+              <label for="student-number">Student number</label>
+              <input id="student-number" name="studentNumber" type="text" placeholder="e.g. PS/2023/174" autocomplete="off" autocapitalize="characters" maxlength="30" required>
+              <p class="field-hint">Use your official student number (format: XX/YYYY/number).</p>
+            </div>
+            <div class="field full">
+              <label for="full-name">Full name</label>
+              <input id="full-name" name="fullName" type="text" placeholder="Enter your full name" autocomplete="name" maxlength="120" required>
+            </div>
+            <div class="field full">
+              <label for="username">Choose a username</label>
+              <input id="username" name="username" type="text" placeholder="e.g. kasun_perera" autocomplete="username" minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" required>
+              <p class="field-hint">3–24 characters. Use letters, numbers and underscores.</p>
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <div class="password-wrap"><input id="password" name="password" type="password" placeholder="Create password" autocomplete="new-password" minlength="8" required><button class="show-password" type="button" data-target="password">Show</button></div>
+              <p class="field-hint">At least 8 characters.</p>
+            </div>
+            <div class="field">
+              <label for="confirm-password">Confirm password</label>
+              <div class="password-wrap"><input id="confirm-password" name="confirmPassword" type="password" placeholder="Re-enter password" autocomplete="new-password" minlength="8" required><button class="show-password" type="button" data-target="confirm-password">Show</button></div>
+            </div>
+          </div>
+          <div id="register-error" class="form-error" role="alert"></div>
+          <div id="register-success" class="form-success" role="status"></div>
+          <button class="submit" id="register-submit" type="submit">Create student account</button>
+        </form>
+
+        <div class="security-note"><span aria-hidden="true">◆</span><span><strong>Keep your password private.</strong> PADURA LIVE staff will never need you to share it. Your student number must be unique.</span></div>
+        <div class="register-footer">Already have an account? <a href="login.html">Sign in</a></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/js/config.js"></script>
+  <script>
+    const form = document.getElementById('student-register-form');
+    const submitButton = document.getElementById('register-submit');
+    const errorBox = document.getElementById('register-error');
+    const successBox = document.getElementById('register-success');
+
+    document.querySelectorAll('.show-password').forEach((button) => {
+      button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.target);
+        const reveal = input.type === 'password';
+        input.type = reveal ? 'text' : 'password';
+        button.textContent = reveal ? 'Hide' : 'Show';
+      });
+    });
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.style.display = 'block';
+      successBox.style.display = 'none';
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errorBox.style.display = 'none';
+      successBox.style.display = 'none';
+
+      const studentNumber = document.getElementById('student-number').value.trim().toUpperCase();
+      const fullName = document.getElementById('full-name').value.trim().replace(/\s+/g, ' ');
+      const username = document.getElementById('username').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+
+      if (!/^[A-Z]{2}\/[0-9]{4}\/[0-9]+$/.test(studentNumber)) return showError('Enter a valid student number, for example PS/2023/174.');
+      if (fullName.length < 2) return showError('Please enter your full name.');
+      if (!/^[a-z0-9_]{3,24}$/.test(username)) return showError('Username must be 3–24 characters and use only letters, numbers and underscores.');
+      if (password.length < 8) return showError('Your password must contain at least 8 characters.');
+      if (password !== confirmPassword) return showError('The passwords do not match. Please check and try again.');
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Creating your account…';
+      try {
+        const endpoint = `${window.PADURA_CONFIG.SUPABASE_URL}/functions/v1/register-student`;
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': window.PADURA_CONFIG.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${window.PADURA_CONFIG.SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ studentNumber, fullName, username, password })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Registration could not be completed. Please try again.');
+
+        successBox.textContent = 'Your student account has been created. You can now sign in using your username and password.';
+        successBox.style.display = 'block';
+        form.reset();
+        submitButton.textContent = 'Account created';
+        setTimeout(() => { window.location.href = 'login.html'; }, 2200);
+      } catch (error) {
+        showError(error.message || 'Registration failed. Please try again.');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Create student account';
+      }
+    });
+  </script>
+</body>
+</html>
