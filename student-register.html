@@ -73,7 +73,7 @@
         <header class="register-heading">
           <div class="eyebrow">Student registration</div>
           <h2>Create your account</h2>
-          <p>Enter your student details and choose the username and password you want to use when signing in.</p>
+          <p>Enter your official student number and create your own username and password.</p>
         </header>
 
         <form id="student-register-form" novalidate>
@@ -82,10 +82,6 @@
               <label for="student-number">Student number</label>
               <input id="student-number" name="studentNumber" type="text" placeholder="e.g. PS/2023/174" autocomplete="off" autocapitalize="characters" maxlength="30" required>
               <p class="field-hint">Use your official student number (format: XX/YYYY/number).</p>
-            </div>
-            <div class="field full">
-              <label for="full-name">Full name</label>
-              <input id="full-name" name="fullName" type="text" placeholder="Enter your full name" autocomplete="name" maxlength="120" required>
             </div>
             <div class="field full">
               <label for="username">Choose a username</label>
@@ -141,13 +137,11 @@
       successBox.style.display = 'none';
 
       const studentNumber = document.getElementById('student-number').value.trim().toUpperCase();
-      const fullName = document.getElementById('full-name').value.trim().replace(/\s+/g, ' ');
       const username = document.getElementById('username').value.trim().toLowerCase();
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirm-password').value;
 
       if (!/^[A-Z]{2}\/[0-9]{4}\/[0-9]+$/.test(studentNumber)) return showError('Enter a valid student number, for example PS/2023/174.');
-      if (fullName.length < 2) return showError('Please enter your full name.');
       if (!/^[a-z0-9_]{3,24}$/.test(username)) return showError('Username must be 3–24 characters and use only letters, numbers and underscores.');
       if (password.length < 8) return showError('Your password must contain at least 8 characters.');
       if (password !== confirmPassword) return showError('The passwords do not match. Please check and try again.');
@@ -163,7 +157,7 @@
             'apikey': window.PADURA_CONFIG.SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${window.PADURA_CONFIG.SUPABASE_ANON_KEY}`
           },
-          body: JSON.stringify({ studentNumber, fullName, username, password })
+          body: JSON.stringify({ studentNumber, username, password })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || 'Registration could not be completed. Please try again.');
